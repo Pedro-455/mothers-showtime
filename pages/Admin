@@ -1,0 +1,96 @@
+import { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
+
+export default function Admin() {
+  const [code, setCode] = useState("");
+  const [authed, setAuthed] = useState(false);
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const ADMIN_CODE = "2746"; // your admin code
+
+  async function loadEntries() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("entries")
+      .select("*")
+      .order("id", { ascending: false });
+
+    if (!error) setEntries(data);
+    setLoading(false);
+  }
+
+  function handleLogin(e) {
+    e.preventDefault();
+    if (code === ADMIN_CODE) {
+      setAuthed(true);
+      loadEntries();
+    }
+  }
+
+  async function deleteEntry(id) {
+    if (!confirm("Delete this entry?")) return;
+
+    await supabase.from("entries").delete().eq("id", id);
+    loadEntries();
+  }
+
+  return (
+    <div style={{ padding: 20 }}>
+      {!authed && (
+        <form onSubmit={handleLogin}>
+          <h2>Admin Login</h2>
+          <input
+            placeholder="Enter admin code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <button>Enter</button>
+        </form>
+      )}
+
+      {authed && (
+        <div>
+          <h2>Entries</h2>
+
+          {loading && <p>Loading...</p>}
+
+          {entries.map((e) => (
+            <div
+              key={e.id}
+              style={{
+                border: "1px solid #ccc",
+                padding: 15,
+                marginBottom: 20,
+              }}
+            >
+              <h3>{e.name}</h3>
+              <p><b>Mobile:</b> {e.mobile}</p>
+              <p><b>Email:</b> {e.email}</p>
+              <p><b>Car:</b> {e.car}</p>
+              <p><b>Story:</b> {e.story}</p>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {e.photos?.map((url, i) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt=""
+                    style={{ width: 120, height: 120, objectFit: "cover" }}
+                  />
+                ))}
+              </div>
+
+              <button
+                style={{ marginTop: 10, background: "red", color: "white" }}
+                onClick={() => deleteEntry(e.id)}
+              >
+                Delete Entry
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
