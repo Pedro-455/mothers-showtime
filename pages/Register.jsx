@@ -8,139 +8,115 @@ export default function Register() {
     email: "",
     car: "",
     story: "",
+    photos: [],
   });
 
-  const [photos, setPhotos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-  function updateField(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  function updateField(field, value) {
+    setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  async function uploadPhotos(files) {
+    const uploadedUrls = [];
+
+    for (const file of files) {
+      const fileName = `${Date.now()}-${file.name}`;
+      const { data, error } = await supabase.storage
+        .from("photos")
+        .upload(fileName, file);
+
+      if (!error) {
+        const url = supabase.storage.from("photos").getPublicUrl(fileName).data.publicUrl;
+        uploadedUrls.push(url);
+      }
+    }
+
+    return uploadedUrls;
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setMessage("");
-    setLoading(true);
-
-    // Check if mobile already exists
-    const { data: existing } = await supabase
-      .from("entries")
-      .select("mobile")
-      .eq("mobile", form.mobile)
-      .maybeSingle();
-
-    if (existing) {
-      setLoading(false);
-      setMessage("This mobile number is already registered.");
-      return;
-    }
+    setUploading(true);
 
     // Upload photos
-    const photoUrls = [];
+    const photoFiles = form.photos;
+    const photoUrls = await uploadPhotos(photoFiles);
 
-    for (let i = 0; i < photos.length; i++) {
-      const file = photos[i];
-      const fileName = `${form.mobile}_${Date.now()}_${i}.jpg`;
+    // Insert into Supabase using your REAL schema
+    const { error } = await supabase.from("entries").insert({
+      handle: form.name,
+      mobile: form.mobile,
+      email: form.email,
+      information: form.car,
+      story: form.story,
+      photos: photoUrls,          // array
+      photo_url: photoUrls[0] || null, // legacy single photo
+    });
 
-      const { data: upload, error: uploadError } = await supabase.storage
-        .from("photos")
-        .upload(fileName, file);
+    setUploading(false);
 
-      if (uploadError) {
-        setLoading(false);
-        setMessage("Photo upload failed.");
-        return;
-      }
-
-      const publicUrl = supabase.storage
-        .from("photos")
-        .getPublicUrl(fileName).data.publicUrl;
-
-      photoUrls.push(publicUrl);
-    }
-
-    // Insert entry
-    const { error } = await supabase.from("entries").insert([
-      {
-        name: form.name,
-        mobile: form.mobile,
-        email: form.email,
-        car: form.car,
-        story: form.story,
-        photos: photoUrls,
-      },
-    ]);
-
-    setLoading(false);
-
-    if (error) {
-      setMessage("Something went wrong. Please try again.");
+    if (!error) {
+      setSubmitted(true);
     } else {
-      setMessage("Registration complete. Thank you!");
-      setForm({ name: "", mobile: "", email: "", car: "", story: "" });
-      setPhotos([]);
+      alert("Error submitting entry");
     }
   }
 
+  if (submitted) {
+    return <h2>Thanks! Your entry has been submitted.</h2>;
+  }
+
   return (
-    <div style={{ padding: 20, maxWidth: 600, margin: "0 auto" }}>
-      <h2>Mothers Showtime Registration</h2>
+    <form onSubmit={handleSubmit} style={{ padding: 20 }}>
+      <h2>Register Your Car</h2>
 
-      {message && (
-        <div style={{ marginBottom: 20, color: "red" }}>{message}</div>
-      )}
+      <input
+        placeholder="Your Name"
+        value={form.name}
+        onChange={(e) => updateField("name", e.target.value)}
+        required
+      />
 
-      <form onSubmit={handleSubmit}>
-        <input
-          name="name"
-          placeholder="Full name"
-          value={form.name}
-          onChange={updateField}
-          required
-        />
+      <input
+        placeholder="Mobile Number"
+        value={form.mobile}
+        onChange={(e) => updateField("mobile", e.target.value)}
+        required
+      />
 
-        <input
-          name="mobile"
-          placeholder="Mobile number"
-          value={form.mobile}
-          onChange={updateField}
-          required
-        />
+      <input
+        placeholder="Email Address"
+        value={form.email}
+        onChange={(e) => updateField("email", e.target.value)}
+        required
+      />
 
-        <input
-          name="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={updateField}
-        />
+      <input
+        placeholder="Car (Make / Model / Year)"
+        value={form.car}
+        onChange={(e) => updateField("car", e.target.value)}
+        required
+      />
 
-        <input
-          name="car"
-          placeholder="Car make/model"
-          value={form.car}
-          onChange={updateField}
-          required
-        />
+      <textarea
+        placeholder="Your Story"
+        value={form.story}
+        onChange={(e) => updateField("story", e.target.value)}
+      />
 
-        <textarea
-          name="story"
-          placeholder="Tell us about your car"
-          value={form.story}
-          onChange={updateField}
-        />
+      <input
+        type="file"
+        multiple
+        accept="image/*"
+        onChange={(e) => updateField("photos", e.target.files)}
+        required
+      />
 
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => setPhotos([...e.target.files])}
-        />
-
-        <button disabled={loading}>
-          {loading ? "Submitting..." : "Submit Entry"}
-        </button>
-      </form>
-    </div>
+      <button disabled={uploading}>
+        {uploading ? "Uploading..." : "Submit Entry"}
+      </button>
+    </form>
   );
 }
