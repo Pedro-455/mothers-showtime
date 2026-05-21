@@ -11,12 +11,16 @@ export default function Admin() {
 
   async function loadEntries() {
     setLoading(true);
+
     const { data, error } = await supabase
       .from("entries")
       .select("*")
       .order("id", { ascending: false });
 
-    if (!error) setEntries(data);
+    if (!error) {
+      setEntries(data);
+    }
+
     setLoading(false);
   }
 
@@ -64,25 +68,52 @@ export default function Admin() {
                 marginBottom: 20,
               }}
             >
-              <h3>{e.name}</h3>
-              <p><b>Mobile:</b> {e.mobile}</p>
-              <p><b>Email:</b> {e.email}</p>
-              <p><b>Car:</b> {e.car}</p>
-              <p><b>Story:</b> {e.story}</p>
+              <h3>{e.handle}</h3>
+
+              <p><b>Mobile:</b> {e.mobile || "—"}</p>
+              <p><b>Email:</b> {e.email || "—"}</p>
+              <p><b>Car:</b> {e.information || "—"}</p>
+              <p><b>Story:</b> {e.story || "—"}</p>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {e.photos?.map((url, i) => (
+                {/* Multi-photo array */}
+                {Array.isArray(e.photos) &&
+                  e.photos.map((url, i) => (
+                    <img
+                      key={i}
+                      src={url}
+                      alt=""
+                      style={{
+                        width: 120,
+                        height: 120,
+                        objectFit: "cover",
+                        borderRadius: 4,
+                      }}
+                    />
+                  ))}
+
+                {/* Legacy single photo */}
+                {e.photo_url && (
                   <img
-                    key={i}
-                    src={url}
+                    src={e.photo_url}
                     alt=""
-                    style={{ width: 120, height: 120, objectFit: "cover" }}
+                    style={{
+                      width: 120,
+                      height: 120,
+                      objectFit: "cover",
+                      borderRadius: 4,
+                    }}
                   />
-                ))}
+                )}
               </div>
 
               <button
-                style={{ marginTop: 10, background: "red", color: "white" }}
+                style={{
+                  marginTop: 10,
+                  background: "red",
+                  color: "white",
+                  padding: "6px 12px",
+                }}
                 onClick={() => deleteEntry(e.id)}
               >
                 Delete Entry
