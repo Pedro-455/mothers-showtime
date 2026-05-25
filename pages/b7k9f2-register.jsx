@@ -102,7 +102,22 @@ export default function Register() {
 
       if (vehicleError) throw vehicleError;
 
-      // 2. Link to show
+      // 2. Create profile and link to vehicle
+      const { data: profile } = await supabase
+        .from("profiles")
+        .insert({
+          full_name: form.full_name,
+          email: form.email,
+          phone: form.mobile,
+        })
+        .select()
+        .single();
+
+      if (profile) {
+        await supabase.from("vehicles").update({ user_id: profile.id }).eq("id", vehicle.id);
+      }
+
+      // 3. Link to show
       await supabase.from("vehicle_show_links").insert({
         vehicle_id: vehicle.id,
         show_id: SHOW_ID,
