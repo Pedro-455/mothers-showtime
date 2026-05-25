@@ -86,23 +86,8 @@ export default function Register() {
     setUploading(true);
 
     try {
-      // 1. Create vehicle entry
+      // 1. Create profile first
       setProgress("Saving your details...");
-      const { data: vehicle, error: vehicleError } = await supabase
-        .from("vehicles")
-        .insert({
-          make: form.make,
-          model: form.model,
-          year: parseInt(form.year),
-          color: form.color,
-          story: form.story,
-        })
-        .select()
-        .single();
-
-      if (vehicleError) throw vehicleError;
-
-      // 2. Create profile and link to vehicle
       const { data: profile } = await supabase
         .from("profiles")
         .insert({
@@ -113,9 +98,21 @@ export default function Register() {
         .select()
         .single();
 
-      if (profile) {
-        await supabase.from("vehicles").update({ user_id: profile.id }).eq("id", vehicle.id);
-      }
+      // 2. Create vehicle entry linked to profile
+      const { data: vehicle, error: vehicleError } = await supabase
+        .from("vehicles")
+        .insert({
+          make: form.make,
+          model: form.model,
+          year: parseInt(form.year),
+          color: form.color,
+          story: form.story,
+          user_id: profile ? profile.id : null,
+        })
+        .select()
+        .single();
+
+      if (vehicleError) throw vehicleError;
 
       // 3. Link to show
       await supabase.from("vehicle_show_links").insert({
