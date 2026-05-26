@@ -370,64 +370,85 @@ export default function Register() {
 
 const styles = {
   page: { minHeight: "100vh", background: "#0a0a0a", fontFamily: "'Georgia', serif", color: "#f0f0f0" },
+
+  // Hero — black with red glow
   hero: { position: "relative", background: "#0a0a0a", borderBottom: "3px solid #CC0000", overflow: "hidden", padding: "80px 24px 60px" },
-  heroOverlay: { position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(204,0,0,0.15) 0%, transparent 70%)", pointerEvents: "none" },
+  heroOverlay: { position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(204,0,0,0.2) 0%, transparent 70%)", pointerEvents: "none" },
   heroContent: { position: "relative", maxWidth: 680, margin: "0 auto", textAlign: "center" },
-  logoMark: { width: 64, height: 64, borderRadius: "50%", background: "#CC0000", color: "#fff", fontSize: 32, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", boxShadow: "0 0 40px rgba(204,0,0,0.4)" },
-  heroEyebrow: { fontSize: 11, letterSpacing: 4, color: "#B8860B", textTransform: "uppercase", marginBottom: 16 },
-  heroTitle: { fontSize: "clamp(36px, 7vw, 64px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", letterSpacing: -1, lineHeight: 1.05 },
-  heroSub: { fontSize: 14, letterSpacing: 3, color: "#999", textTransform: "uppercase", marginBottom: 32 },
-  heroDivider: { width: 60, height: 2, background: "#CC0000", margin: "0 auto 28px" },
-  heroBody: { fontSize: 16, lineHeight: 1.7, color: "#ccc", maxWidth: 560, margin: "0 auto" },
-  formWrap: { maxWidth: 760, margin: "0 auto", padding: "40px 24px 20px" },
+  logoMark: { width: 72, height: 72, borderRadius: "50%", background: "#CC0000", color: "#fff", fontSize: 36, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", boxShadow: "0 0 50px rgba(204,0,0,0.5)" },
+  heroEyebrow: { fontSize: 11, letterSpacing: 4, color: "#D4AF37", textTransform: "uppercase", marginBottom: 16, fontWeight: 600 },
+  heroTitle: { fontSize: "clamp(40px, 7vw, 68px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", letterSpacing: -1, lineHeight: 1.05 },
+  heroSub: { fontSize: 14, letterSpacing: 3, color: "#aaa", textTransform: "uppercase", marginBottom: 32 },
+  heroDivider: { width: 60, height: 3, background: "#CC0000", margin: "0 auto 28px", borderRadius: 2 },
+  heroBody: { fontSize: 16, lineHeight: 1.8, color: "#ddd", maxWidth: 560, margin: "0 auto" },
+
+  // Form
+  formWrap: { maxWidth: 780, margin: "0 auto", padding: "40px 24px 20px" },
   form: { display: "flex", flexDirection: "column", gap: 0 },
-  section: { background: "#111", border: "1px solid #222", borderRadius: 12, padding: "32px 28px", marginBottom: 20 },
+
+  // Section cards — dark with gold border
+  section: { background: "#141414", border: "1px solid #D4AF37", borderRadius: 14, padding: "32px 28px", marginBottom: 24, boxShadow: "0 4px 24px rgba(0,0,0,0.4)" },
   sectionHeader: { display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 28 },
-  sectionNum: { fontSize: 11, fontWeight: 700, color: "#CC0000", letterSpacing: 2, background: "rgba(204,0,0,0.1)", border: "1px solid rgba(204,0,0,0.3)", borderRadius: 4, padding: "4px 8px", marginTop: 2, flexShrink: 0 },
-  sectionTitle: { fontSize: 20, fontWeight: 700, color: "#fff", margin: "0 0 4px" },
-  sectionNote: { fontSize: 13, color: "#666", margin: 0 },
+  sectionNum: { fontSize: 11, fontWeight: 700, color: "#D4AF37", letterSpacing: 2, background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.4)", borderRadius: 4, padding: "4px 10px", marginTop: 2, flexShrink: 0 },
+  sectionTitle: { fontSize: 22, fontWeight: 700, color: "#fff", margin: "0 0 4px" },
+  sectionNote: { fontSize: 13, color: "#888", margin: 0 },
+
+  // Fields
   grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 },
   grid4: { display: "grid", gridTemplateColumns: "1fr 1.5fr 1.5fr 1fr", gap: 12 },
   fieldWrap: { display: "flex", flexDirection: "column", gap: 8 },
-  label: { fontSize: 12, fontWeight: 600, color: "#aaa", letterSpacing: 1, textTransform: "uppercase" },
+  label: { fontSize: 12, fontWeight: 700, color: "#D4AF37", letterSpacing: 1.5, textTransform: "uppercase" },
   req: { color: "#CC0000" },
-  input: { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8, padding: "14px 16px", fontSize: 15, color: "#fff", outline: "none", width: "100%", boxSizing: "border-box", fontFamily: "'Georgia', serif", transition: "border-color 0.2s" },
+
+  // Inputs — light grey with dark text, red focus
+  input: { background: "#e8e8e8", border: "2px solid #ccc", borderRadius: 8, padding: "14px 16px", fontSize: 15, color: "#111", outline: "none", width: "100%", boxSizing: "border-box", fontFamily: "'Georgia', serif", transition: "border-color 0.2s, box-shadow 0.2s" },
   textarea: { resize: "vertical", minHeight: 140, lineHeight: 1.6 },
-  dropZone: { border: "2px dashed #333", borderRadius: 12, padding: "48px 24px", textAlign: "center", cursor: "pointer", transition: "all 0.2s", marginBottom: 16, background: "#0d0d0d" },
+
+  // Photo upload
+  dropZone: { border: "2px dashed #D4AF37", borderRadius: 12, padding: "48px 24px", textAlign: "center", cursor: "pointer", transition: "all 0.2s", marginBottom: 16, background: "#0d0d0d" },
   dropZoneActive: { borderColor: "#CC0000", background: "rgba(204,0,0,0.05)" },
-  dropIcon: { fontSize: 36, marginBottom: 12 },
-  dropTitle: { fontSize: 16, color: "#ccc", fontWeight: 600, margin: "0 0 8px" },
-  dropSub: { fontSize: 13, color: "#555", margin: 0 },
+  dropIcon: { fontSize: 40, marginBottom: 12 },
+  dropTitle: { fontSize: 16, color: "#fff", fontWeight: 600, margin: "0 0 8px" },
+  dropSub: { fontSize: 13, color: "#888", margin: 0 },
   previewGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 12, marginBottom: 12 },
-  previewItem: { position: "relative", borderRadius: 8, overflow: "hidden", aspectRatio: "1", border: "1px solid #222" },
+  previewItem: { position: "relative", borderRadius: 8, overflow: "hidden", aspectRatio: "1", border: "2px solid #D4AF37" },
   previewImg: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
   mainBadge: { position: "absolute", top: 6, left: 6, background: "#CC0000", color: "#fff", fontSize: 9, fontWeight: 700, letterSpacing: 1, padding: "3px 6px", borderRadius: 3 },
-  removeBtn: { position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.7)", border: "none", color: "#fff", borderRadius: "50%", width: 24, height: 24, cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" },
-  photoCount: { fontSize: 13, color: "#555", textAlign: "center", marginTop: 4 },
-  errorBox: { background: "rgba(204,0,0,0.1)", border: "1px solid rgba(204,0,0,0.4)", borderRadius: 8, padding: "14px 18px", color: "#ff6666", fontSize: 14, marginBottom: 16 },
-  progressBox: { display: "flex", alignItems: "center", gap: 12, background: "#111", border: "1px solid #222", borderRadius: 8, padding: "14px 18px", color: "#aaa", fontSize: 14, marginBottom: 16 },
+  removeBtn: { position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.8)", border: "none", color: "#fff", borderRadius: "50%", width: 24, height: 24, cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" },
+  photoCount: { fontSize: 13, color: "#888", textAlign: "center", marginTop: 4 },
+
+  // Feedback
+  errorBox: { background: "rgba(204,0,0,0.12)", border: "1px solid rgba(204,0,0,0.5)", borderRadius: 8, padding: "14px 18px", color: "#ff8888", fontSize: 14, marginBottom: 16 },
+  progressBox: { display: "flex", alignItems: "center", gap: 12, background: "#141414", border: "1px solid #D4AF37", borderRadius: 8, padding: "14px 18px", color: "#D4AF37", fontSize: 14, marginBottom: 16 },
   spinner: { width: 18, height: 18, border: "2px solid #333", borderTop: "2px solid #CC0000", borderRadius: "50%", flexShrink: 0 },
-  submitBtn: { background: "#CC0000", color: "#fff", border: "none", borderRadius: 10, padding: "20px 32px", fontSize: 17, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5, transition: "all 0.2s", fontFamily: "'Georgia', serif", marginTop: 8 },
-  submitDisabled: { background: "#444", cursor: "not-allowed" },
-  formFooter: { fontSize: 12, color: "#444", textAlign: "center", marginTop: 16, lineHeight: 1.6 },
-  successCard: { maxWidth: 560, margin: "80px auto", background: "#111", border: "1px solid #222", borderRadius: 16, padding: "60px 48px", textAlign: "center" },
+
+  // Submit button
+  submitBtn: { background: "#CC0000", color: "#fff", border: "3px solid #CC0000", borderRadius: 10, padding: "20px 32px", fontSize: 18, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5, transition: "all 0.2s", fontFamily: "'Georgia', serif", marginTop: 8, textTransform: "uppercase", letterSpacing: 2 },
+  submitDisabled: { background: "#444", border: "3px solid #444", cursor: "not-allowed" },
+  formFooter: { fontSize: 12, color: "#555", textAlign: "center", marginTop: 16, lineHeight: 1.6 },
+
+  // Success screen
+  successCard: { maxWidth: 580, margin: "80px auto", background: "#141414", border: "2px solid #D4AF37", borderRadius: 16, padding: "60px 48px", textAlign: "center", boxShadow: "0 0 60px rgba(212,175,55,0.15)" },
   trophyWrap: { marginBottom: 32 },
-  trophyRing: { width: 88, height: 88, borderRadius: "50%", border: "2px solid #B8860B", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", background: "rgba(184,134,11,0.08)", boxShadow: "0 0 40px rgba(184,134,11,0.2)" },
-  trophyIcon: { fontSize: 40 },
-  successTitle: { fontSize: 42, fontWeight: 900, color: "#fff", margin: "0 0 12px" },
-  successSub: { fontSize: 16, color: "#999", marginBottom: 32 },
-  successDivider: { width: 48, height: 2, background: "#CC0000", margin: "0 auto 32px" },
-  successBody: { fontSize: 15, color: "#bbb", lineHeight: 1.7, marginBottom: 16 },
-  successBadge: { background: "rgba(204,0,0,0.08)", border: "1px solid rgba(204,0,0,0.2)", borderRadius: 8, padding: "14px 20px", margin: "32px 0 24px" },
-  successFooter: { fontSize: 13, color: "#555" },
+  trophyRing: { width: 96, height: 96, borderRadius: "50%", border: "3px solid #D4AF37", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", background: "rgba(212,175,55,0.08)", boxShadow: "0 0 50px rgba(212,175,55,0.25)" },
+  trophyIcon: { fontSize: 44 },
+  successTitle: { fontSize: 48, fontWeight: 900, color: "#fff", margin: "0 0 12px" },
+  successSub: { fontSize: 16, color: "#aaa", marginBottom: 32 },
+  successDivider: { width: 60, height: 3, background: "#CC0000", margin: "0 auto 32px", borderRadius: 2 },
+  successBody: { fontSize: 15, color: "#ccc", lineHeight: 1.8, marginBottom: 16 },
+  successBadge: { background: "#CC0000", borderRadius: 8, padding: "16px 20px", margin: "32px 0 24px" },
+  successFooter: { fontSize: 13, color: "#666" },
+
+  // Footer
   footer: { borderTop: "1px solid #1a1a1a", padding: "24px", textAlign: "center", marginTop: 20 },
-  footerText: { fontSize: 13, color: "#444" },
+  footerText: { fontSize: 13, color: "#555" },
 };
 
 const css = `
-  .mothers-input:focus { border-color: #CC0000 !important; box-shadow: 0 0 0 3px rgba(204,0,0,0.1); }
-  .drop-zone:hover { border-color: #CC0000 !important; background: rgba(204,0,0,0.03) !important; }
-  .submit-btn:hover:not(:disabled) { background: #aa0000 !important; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(204,0,0,0.3); }
+  .mothers-input:focus { border-color: #CC0000 !important; border-width: 2px !important; box-shadow: 0 0 0 4px rgba(204,0,0,0.15) !important; background: #fff !important; }
+  .mothers-input::placeholder { color: #999 !important; }
+  .drop-zone:hover { border-color: #CC0000 !important; background: rgba(204,0,0,0.04) !important; }
+  .submit-btn:hover:not(:disabled) { background: #aa0000 !important; border-color: #aa0000 !important; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(204,0,0,0.4) !important; }
   .spinner { animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (max-width: 600px) {
