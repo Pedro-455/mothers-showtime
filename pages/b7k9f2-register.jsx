@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
+import heic2any from "heic2any";
 
 const SHOW_ID = "637da564-ed16-4d81-ac33-5652ceda1f89"; // Chrome 26
 
@@ -57,12 +58,31 @@ export default function Register() {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
-  const addPhotos = useCallback((files) => {
-    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+  async function convertIfHeic(file) {
+    const isHeic = file.type === "image/heic" || file.type === "image/heif" ||
+      file.name.toLowerCase().endsWith(".heic") || file.name.toLowerCase().endsWith(".heif");
+    if (isHeic) {
+      try {
+        const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
+        return new File([converted], file.name.replace(/\.(heic|heif)$/i, ".jpg"), { type: "image/jpeg" });
+      } catch (e) {
+        console.warn("HEIC conversion failed, using original", e);
+        return file;
+      }
+    }
+    return file;
+  }
+
+  const addPhotos = useCallback(async (files) => {
+    const allFiles = Array.from(files);
     const remaining = 10 - photos.length;
-    const toAdd = validFiles.slice(0, remaining);
-    setPhotos((p) => [...p, ...toAdd]);
-    toAdd.forEach((file) => {
+    const toProcess = allFiles.slice(0, remaining);
+    
+    const converted = await Promise.all(toProcess.map(convertIfHeic));
+    const validFiles = converted.filter((f) => f.type.startsWith("image/"));
+    
+    setPhotos((p) => [...p, ...validFiles]);
+    validFiles.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (e) => setPreviews((p) => [...p, e.target.result]);
       reader.readAsDataURL(file);
