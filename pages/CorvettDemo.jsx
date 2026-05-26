@@ -24,7 +24,8 @@ export default function CorvetteDemo() {
   ];
 
   return (
-    <div style={styles.page}>
+    <div style={styles.pageOuter}>
+      <div style={styles.page}>
       <style>{css}</style>
 
       {/* HERO */}
@@ -193,11 +194,13 @@ export default function CorvetteDemo() {
 
       </div>
     </div>
+    </div>
   );
 }
 
 const styles = {
-  page: { minHeight: "100vh", background: "#0a0a0a", fontFamily: "'Georgia', serif", color: "#f0f0f0" },
+  pageOuter: { minHeight: "100vh", background: "#1a1a1a", padding: "24px", display: "flex", justifyContent: "center", alignItems: "flex-start" },
+  page: { width: "100%", maxWidth: 900, background: "#0a0a0a", fontFamily: "'Georgia', serif", color: "#f0f0f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 48px rgba(0,0,0,0.6)" },
 
   // Hero
   hero: { position: "relative", height: "70vw", maxHeight: 600, minHeight: 300, overflow: "hidden" },
