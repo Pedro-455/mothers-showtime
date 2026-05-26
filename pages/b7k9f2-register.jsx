@@ -82,14 +82,18 @@ export default function Register() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (uploading) return;
     setError("");
     if (photos.length === 0) { setError("Please upload at least one photo of your vehicle."); return; }
     setUploading(true);
 
     try {
-      // 1. Insert into cars table first to get the ID
+      // 1. Insert into cars table — retry once if first attempt fails
       setProgress("Saving your details...");
-      const { data: car, error: carError } = await supabase
+      let car, carError;
+
+      // First attempt
+      ({ data: car, error: carError } = await supabase
         .from("cars")
         .insert({
           show_id: SHOW_ID,
@@ -108,7 +112,33 @@ export default function Register() {
           submitted_at: new Date().toISOString(),
         })
         .select()
-        .single();
+        .single());
+
+      // Auto-retry once if first attempt failed
+      if (carError) {
+        setProgress("Retrying...");
+        await new Promise(r => setTimeout(r, 1000));
+        ({ data: car, error: carError } = await supabase
+          .from("cars")
+          .insert({
+            show_id: SHOW_ID,
+            entrant_name: form.entrant_name,
+            registration_email: form.email,
+            registration_phone: form.mobile,
+            make: form.make,
+            model: form.model,
+            year: form.year,
+            color: form.color,
+            engine: form.engine,
+            transmission: form.transmission,
+            story: form.story,
+            car_story: form.story,
+            status: "pending",
+            submitted_at: new Date().toISOString(),
+          })
+          .select()
+          .single());
+      }
 
       if (carError) throw carError;
 
