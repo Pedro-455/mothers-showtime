@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import CorvetteDemo from "./pages/CorvettDemo.jsx";
 import CadillacDemo from "./pages/CadillacDemo.jsx";
 import YukonDemo from "./pages/YukonDemo.jsx";
+import HarleyDemo from "./pages/HarleyDemo.jsx";
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/corvette-z06" element={<CorvetteDemo />} />
         <Route path="/cadillac-lyriq" element={<CadillacDemo />} />
         <Route path="/gmc-yukon" element={<YukonDemo />} />
+        <Route path="/harley-street-glide" element={<HarleyDemo />} />
         <Route
           path="*"
           element={
