@@ -169,7 +169,7 @@ export default function Register() {
             Your QR code will be sent to you before the show. Place it on your vehicle so judges and the public can view your build story and photos.
           </p>
           <div style={styles.successBadge}>
-            <span style={{ color: "#CC0000", fontWeight: 700, letterSpacing: 2, fontSize: 13 }}>
+            <span style={{ color: "#fff", fontWeight: 700, letterSpacing: 2, fontSize: 13 }}>
               CHROME 26 · AUCKLAND SHOWGROUNDS · JUNE 2026
             </span>
           </div>
@@ -185,7 +185,7 @@ export default function Register() {
       <style>{css}</style>
 
       {/* HERO */}
-      <div style={styles.hero}>
+      <div style={styles.hero} className="hero">
         <div style={styles.heroOverlay} />
         <div style={styles.heroContent}>
           <div style={styles.logoMark}>M</div>
@@ -201,11 +201,11 @@ export default function Register() {
       </div>
 
       {/* FORM CARD */}
-      <div style={styles.formWrap}>
+      <div style={styles.formWrap} className="form-wrap">
         <form onSubmit={handleSubmit} style={styles.form}>
 
           {/* OWNER DETAILS */}
-          <div style={styles.section}>
+          <div style={styles.section} className="section">
             <div style={styles.sectionHeader}>
               <span style={styles.sectionNum}>01</span>
               <div>
@@ -213,7 +213,7 @@ export default function Register() {
                 <p style={styles.sectionNote}>Your contact information — not shown to the public</p>
               </div>
             </div>
-            <div style={styles.grid2}>
+            <div style={styles.grid2} className="grid2">
               <div style={styles.fieldWrap}>
                 <label style={styles.label}>Full Name <span style={styles.req}>*</span></label>
                 <input style={styles.input} placeholder="e.g. John Smith" value={form.entrant_name}
@@ -233,7 +233,7 @@ export default function Register() {
           </div>
 
           {/* VEHICLE DETAILS */}
-          <div style={styles.section}>
+          <div style={styles.section} className="section">
             <div style={styles.sectionHeader}>
               <span style={styles.sectionNum}>02</span>
               <div>
@@ -241,7 +241,7 @@ export default function Register() {
                 <p style={styles.sectionNote}>Judges and the public will see this information</p>
               </div>
             </div>
-            <div style={styles.grid4}>
+            <div style={styles.grid4} className="grid4">
               <div style={styles.fieldWrap}>
                 <label style={styles.label}>Year <span style={styles.req}>*</span></label>
                 <input style={styles.input} placeholder="e.g. 1969" value={form.year}
@@ -278,7 +278,7 @@ export default function Register() {
           </div>
 
           {/* STORY */}
-          <div style={styles.section}>
+          <div style={styles.section} className="section">
             <div style={styles.sectionHeader}>
               <span style={styles.sectionNum}>03</span>
               <div>
@@ -295,7 +295,7 @@ export default function Register() {
           </div>
 
           {/* PHOTOS */}
-          <div style={styles.section}>
+          <div style={styles.section} className="section">
             <div style={styles.sectionHeader}>
               <span style={styles.sectionNum}>04</span>
               <div>
@@ -322,7 +322,7 @@ export default function Register() {
             )}
 
             {previews.length > 0 && (
-              <div style={styles.previewGrid}>
+              <div style={styles.previewGrid} className="preview-grid">
                 {previews.map((src, i) => (
                   <div key={i} style={styles.previewItem}>
                     <img src={src} alt={`Photo ${i + 1}`} style={styles.previewImg} />
@@ -454,5 +454,10 @@ const css = `
   @media (max-width: 600px) {
     .grid4 { grid-template-columns: 1fr 1fr !important; }
     .grid2 { grid-template-columns: 1fr !important; }
+    .section { padding: 24px 16px !important; }
+    .form-wrap { padding: 20px 12px !important; }
+    .hero-content { padding: 0 16px !important; }
+    .mothers-input { font-size: 16px !important; padding: 16px !important; }
+    .submit-btn { font-size: 16px !important; padding: 18px 24px !important; }
   }
 `;
