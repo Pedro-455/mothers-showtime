@@ -238,10 +238,9 @@ export default function Register() {
       <div style={styles.hero} className="hero">
         <div style={styles.heroOverlay} />
         <div style={styles.heroContent}>
-          <div style={styles.logoMark}>M</div>
-          <p style={styles.heroEyebrow}>MOTHERS POLISH · INVITE ONLY</p>
-          <h1 style={styles.heroTitle}>Mothers Showtime</h1>
-          <p style={styles.heroSub}>CHROME 26 · Auckland Showgrounds · June 2026</p>
+          <p style={styles.heroEyebrow}>INVITE ONLY · VIP REGISTRATION</p>
+          <h1 style={styles.heroTitle}>SHOWCASE</h1>
+          <p style={styles.heroSub}>3–4 OCTOBER 2026 · AUCKLAND SHOWGROUNDS</p>
           <div style={styles.heroDivider} />
           <p style={styles.heroBody}>
             You've been personally selected to enter one of New Zealand's most prestigious vehicle shows. 
@@ -412,7 +411,10 @@ export default function Register() {
       </div>
 
       <div style={styles.footer}>
-        <p style={styles.footerText}>© 2026 Mothers Polish New Zealand · Presented with pride</p>
+        <div style={styles.footerInner}>
+          <p style={styles.footerPowered}>Powered by</p>
+          <img src="/Mothers Logo Red.png" alt="Mothers Polish" style={styles.footerLogo} />
+        </div>
       </div>
     </div>
   );
