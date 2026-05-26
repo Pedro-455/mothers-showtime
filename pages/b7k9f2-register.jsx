@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 
-const SHOW_ID = "57941103-3567-415d-b068-7b76263b068e"; // CHROME Showcase
+const SHOW_ID = "637da564-ed16-4d81-ac33-5652ceda1f89"; // Chrome 26
 
 async function compressImage(file, maxSizeKB = 900) {
   return new Promise((resolve) => {
@@ -41,8 +41,9 @@ async function compressImage(file, maxSizeKB = 900) {
 
 export default function Register() {
   const [form, setForm] = useState({
+    entrant_name: "", mobile: "", email: "",
     make: "", model: "", year: "", color: "",
-    full_name: "", mobile: "", email: "", story: "",
+    engine: "", transmission: "", story: "",
   });
   const [photos, setPhotos] = useState([]);
   const [previews, setPreviews] = useState([]);
@@ -86,60 +87,56 @@ export default function Register() {
     setUploading(true);
 
     try {
-      // 1. Create profile first
+      // 1. Insert into cars table first to get the ID
       setProgress("Saving your details...");
-      const { data: profile } = await supabase
-        .from("profiles")
+      const { data: car, error: carError } = await supabase
+        .from("cars")
         .insert({
-          full_name: form.full_name,
-          email: form.email,
-          phone: form.mobile,
-        })
-        .select()
-        .single();
-
-      // 2. Create vehicle entry linked to profile
-      const { data: vehicle, error: vehicleError } = await supabase
-        .from("vehicles")
-        .insert({
+          show_id: SHOW_ID,
+          entrant_name: form.entrant_name,
+          registration_email: form.email,
+          registration_phone: form.mobile,
           make: form.make,
           model: form.model,
-          year: parseInt(form.year),
+          year: form.year,
           color: form.color,
+          engine: form.engine,
+          transmission: form.transmission,
           story: form.story,
-          user_id: profile ? profile.id : null,
+          car_story: form.story,
+          status: "pending",
+          submitted_at: new Date().toISOString(),
         })
         .select()
         .single();
 
-      if (vehicleError) throw vehicleError;
+      if (carError) throw carError;
 
-      // 3. Link to show
-      await supabase.from("vehicle_show_links").insert({
-        vehicle_id: vehicle.id,
-        show_id: SHOW_ID,
-      });
-
-      // 3. Upload and compress photos
+      // 2. Upload and compress photos
       const photoUrls = [];
       for (let i = 0; i < photos.length; i++) {
         setProgress(`Compressing and uploading photo ${i + 1} of ${photos.length}...`);
         const compressed = await compressImage(photos[i]);
-        const fileName = `${vehicle.id}/${Date.now()}-${i}.jpg`;
+        const fileName = `${car.id}/${Date.now()}-${i}.jpg`;
         const { error: uploadError } = await supabase.storage
-          .from("vehicle-photos")
+          .from("car-photos")
           .upload(fileName, compressed, { contentType: "image/jpeg" });
         if (!uploadError) {
-          const { data: urlData } = supabase.storage.from("vehicle-photos").getPublicUrl(fileName);
-          photoUrls.push({ vehicle_id: vehicle.id, url: urlData.publicUrl, path: fileName });
+          const { data: urlData } = supabase.storage.from("car-photos").getPublicUrl(fileName);
+          photoUrls.push(urlData.publicUrl);
         }
       }
 
-      // 4. Insert photo records
+      // 3. Update car with photo URLs
       if (photoUrls.length > 0) {
-        await supabase.from("photos").insert(photoUrls);
-        // Set first photo as main
-        await supabase.from("vehicles").update({ main_photo_url: photoUrls[0].url }).eq("id", vehicle.id);
+        setProgress("Finalising your entry...");
+        await supabase
+          .from("cars")
+          .update({
+            photo_url: photoUrls[0],
+            photo_urls: photoUrls,
+          })
+          .eq("id", car.id);
       }
 
       setSubmitted(true);
@@ -172,7 +169,9 @@ export default function Register() {
             Your QR code will be sent to you before the show. Place it on your vehicle so judges and the public can view your build story and photos.
           </p>
           <div style={styles.successBadge}>
-            <span style={{ color: "#CC0000", fontWeight: 700, letterSpacing: 2, fontSize: 13 }}>CHROME SHOWCASE · AUCKLAND SHOWGROUNDS · SEPTEMBER 2025</span>
+            <span style={{ color: "#CC0000", fontWeight: 700, letterSpacing: 2, fontSize: 13 }}>
+              CHROME 26 · AUCKLAND SHOWGROUNDS · JUNE 2026
+            </span>
           </div>
           <p style={styles.successFooter}>Presented by <strong>Mothers Polish</strong> — The Detailer's Choice Since 1972</p>
         </div>
@@ -192,9 +191,12 @@ export default function Register() {
           <div style={styles.logoMark}>M</div>
           <p style={styles.heroEyebrow}>MOTHERS POLISH · INVITE ONLY</p>
           <h1 style={styles.heroTitle}>Mothers Showtime</h1>
-          <p style={styles.heroSub}>CHROME Showcase · Auckland Showgrounds · September 2025</p>
+          <p style={styles.heroSub}>CHROME 26 · Auckland Showgrounds · June 2026</p>
           <div style={styles.heroDivider} />
-          <p style={styles.heroBody}>You've been personally selected to enter one of New Zealand's most prestigious vehicle shows. Complete your registration below — our judges and the public will see your story and photos on the day.</p>
+          <p style={styles.heroBody}>
+            You've been personally selected to enter one of New Zealand's most prestigious vehicle shows. 
+            Complete your registration below — our judges and the public will see your story and photos on the day.
+          </p>
         </div>
       </div>
 
@@ -214,8 +216,8 @@ export default function Register() {
             <div style={styles.grid2}>
               <div style={styles.fieldWrap}>
                 <label style={styles.label}>Full Name <span style={styles.req}>*</span></label>
-                <input style={styles.input} placeholder="e.g. John Smith" value={form.full_name}
-                  onChange={(e) => updateField("full_name", e.target.value)} required className="mothers-input" />
+                <input style={styles.input} placeholder="e.g. John Smith" value={form.entrant_name}
+                  onChange={(e) => updateField("entrant_name", e.target.value)} required className="mothers-input" />
               </div>
               <div style={styles.fieldWrap}>
                 <label style={styles.label}>Mobile Number <span style={styles.req}>*</span></label>
@@ -261,6 +263,18 @@ export default function Register() {
                   onChange={(e) => updateField("color", e.target.value)} className="mothers-input" />
               </div>
             </div>
+            <div style={{ ...styles.grid2, marginTop: 16 }}>
+              <div style={styles.fieldWrap}>
+                <label style={styles.label}>Engine</label>
+                <input style={styles.input} placeholder="e.g. 350ci V8" value={form.engine}
+                  onChange={(e) => updateField("engine", e.target.value)} className="mothers-input" />
+              </div>
+              <div style={styles.fieldWrap}>
+                <label style={styles.label}>Transmission</label>
+                <input style={styles.input} placeholder="e.g. 4-Speed Manual" value={form.transmission}
+                  onChange={(e) => updateField("transmission", e.target.value)} className="mothers-input" />
+              </div>
+            </div>
           </div>
 
           {/* STORY */}
@@ -290,7 +304,6 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Drop Zone */}
             {photos.length < 10 && (
               <div
                 style={{ ...styles.dropZone, ...(dragOver ? styles.dropZoneActive : {}) }}
@@ -308,15 +321,13 @@ export default function Register() {
               </div>
             )}
 
-            {/* Preview Grid */}
             {previews.length > 0 && (
               <div style={styles.previewGrid}>
                 {previews.map((src, i) => (
                   <div key={i} style={styles.previewItem}>
                     <img src={src} alt={`Photo ${i + 1}`} style={styles.previewImg} />
                     {i === 0 && <div style={styles.mainBadge}>MAIN</div>}
-                    <button type="button" style={styles.removeBtn}
-                      onClick={() => removePhoto(i)}>✕</button>
+                    <button type="button" style={styles.removeBtn} onClick={() => removePhoto(i)}>✕</button>
                   </div>
                 ))}
               </div>
@@ -329,10 +340,8 @@ export default function Register() {
             </p>
           </div>
 
-          {/* ERROR */}
           {error && <div style={styles.errorBox}>{error}</div>}
 
-          {/* PROGRESS */}
           {uploading && progress && (
             <div style={styles.progressBox}>
               <div style={styles.spinner} className="spinner" />
@@ -340,13 +349,9 @@ export default function Register() {
             </div>
           )}
 
-          {/* SUBMIT */}
-          <button
-            type="submit"
-            disabled={uploading}
+          <button type="submit" disabled={uploading}
             style={{ ...styles.submitBtn, ...(uploading ? styles.submitDisabled : {}) }}
-            className="submit-btn"
-          >
+            className="submit-btn">
             {uploading ? "Submitting..." : "Complete My Registration →"}
           </button>
 
@@ -356,41 +361,31 @@ export default function Register() {
         </form>
       </div>
 
-      {/* FOOTER */}
       <div style={styles.footer}>
-        <p style={styles.footerText}>© 2025 Mothers Polish New Zealand · Presented with pride</p>
+        <p style={styles.footerText}>© 2026 Mothers Polish New Zealand · Presented with pride</p>
       </div>
     </div>
   );
 }
 
-// ── STYLES ──
 const styles = {
   page: { minHeight: "100vh", background: "#0a0a0a", fontFamily: "'Georgia', serif", color: "#f0f0f0" },
-
-  // Hero
   hero: { position: "relative", background: "#0a0a0a", borderBottom: "3px solid #CC0000", overflow: "hidden", padding: "80px 24px 60px" },
   heroOverlay: { position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(204,0,0,0.15) 0%, transparent 70%)", pointerEvents: "none" },
   heroContent: { position: "relative", maxWidth: 680, margin: "0 auto", textAlign: "center" },
   logoMark: { width: 64, height: 64, borderRadius: "50%", background: "#CC0000", color: "#fff", fontSize: 32, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", boxShadow: "0 0 40px rgba(204,0,0,0.4)" },
-  heroEyebrow: { fontSize: 11, letterSpacing: 4, color: "#B8860B", textTransform: "uppercase", marginBottom: 16, fontFamily: "'Georgia', serif" },
-  heroTitle: { fontSize: "clamp(36px, 7vw, 64px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", letterSpacing: -1, lineHeight: 1.05, fontFamily: "'Georgia', serif" },
+  heroEyebrow: { fontSize: 11, letterSpacing: 4, color: "#B8860B", textTransform: "uppercase", marginBottom: 16 },
+  heroTitle: { fontSize: "clamp(36px, 7vw, 64px)", fontWeight: 900, color: "#fff", margin: "0 0 12px", letterSpacing: -1, lineHeight: 1.05 },
   heroSub: { fontSize: 14, letterSpacing: 3, color: "#999", textTransform: "uppercase", marginBottom: 32 },
   heroDivider: { width: 60, height: 2, background: "#CC0000", margin: "0 auto 28px" },
   heroBody: { fontSize: 16, lineHeight: 1.7, color: "#ccc", maxWidth: 560, margin: "0 auto" },
-
-  // Form
   formWrap: { maxWidth: 760, margin: "0 auto", padding: "40px 24px 20px" },
   form: { display: "flex", flexDirection: "column", gap: 0 },
-
-  // Sections
   section: { background: "#111", border: "1px solid #222", borderRadius: 12, padding: "32px 28px", marginBottom: 20 },
   sectionHeader: { display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 28 },
   sectionNum: { fontSize: 11, fontWeight: 700, color: "#CC0000", letterSpacing: 2, background: "rgba(204,0,0,0.1)", border: "1px solid rgba(204,0,0,0.3)", borderRadius: 4, padding: "4px 8px", marginTop: 2, flexShrink: 0 },
-  sectionTitle: { fontSize: 20, fontWeight: 700, color: "#fff", margin: "0 0 4px", fontFamily: "'Georgia', serif" },
+  sectionTitle: { fontSize: 20, fontWeight: 700, color: "#fff", margin: "0 0 4px" },
   sectionNote: { fontSize: 13, color: "#666", margin: 0 },
-
-  // Fields
   grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 },
   grid4: { display: "grid", gridTemplateColumns: "1fr 1.5fr 1.5fr 1fr", gap: 12 },
   fieldWrap: { display: "flex", flexDirection: "column", gap: 8 },
@@ -398,8 +393,6 @@ const styles = {
   req: { color: "#CC0000" },
   input: { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8, padding: "14px 16px", fontSize: 15, color: "#fff", outline: "none", width: "100%", boxSizing: "border-box", fontFamily: "'Georgia', serif", transition: "border-color 0.2s" },
   textarea: { resize: "vertical", minHeight: 140, lineHeight: 1.6 },
-
-  // Photos
   dropZone: { border: "2px dashed #333", borderRadius: 12, padding: "48px 24px", textAlign: "center", cursor: "pointer", transition: "all 0.2s", marginBottom: 16, background: "#0d0d0d" },
   dropZoneActive: { borderColor: "#CC0000", background: "rgba(204,0,0,0.05)" },
   dropIcon: { fontSize: 36, marginBottom: 12 },
@@ -411,35 +404,26 @@ const styles = {
   mainBadge: { position: "absolute", top: 6, left: 6, background: "#CC0000", color: "#fff", fontSize: 9, fontWeight: 700, letterSpacing: 1, padding: "3px 6px", borderRadius: 3 },
   removeBtn: { position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.7)", border: "none", color: "#fff", borderRadius: "50%", width: 24, height: 24, cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" },
   photoCount: { fontSize: 13, color: "#555", textAlign: "center", marginTop: 4 },
-
-  // Feedback
   errorBox: { background: "rgba(204,0,0,0.1)", border: "1px solid rgba(204,0,0,0.4)", borderRadius: 8, padding: "14px 18px", color: "#ff6666", fontSize: 14, marginBottom: 16 },
   progressBox: { display: "flex", alignItems: "center", gap: 12, background: "#111", border: "1px solid #222", borderRadius: 8, padding: "14px 18px", color: "#aaa", fontSize: 14, marginBottom: 16 },
   spinner: { width: 18, height: 18, border: "2px solid #333", borderTop: "2px solid #CC0000", borderRadius: "50%", flexShrink: 0 },
-
-  // Submit
   submitBtn: { background: "#CC0000", color: "#fff", border: "none", borderRadius: 10, padding: "20px 32px", fontSize: 17, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5, transition: "all 0.2s", fontFamily: "'Georgia', serif", marginTop: 8 },
   submitDisabled: { background: "#444", cursor: "not-allowed" },
   formFooter: { fontSize: 12, color: "#444", textAlign: "center", marginTop: 16, lineHeight: 1.6 },
-
-  // Success
   successCard: { maxWidth: 560, margin: "80px auto", background: "#111", border: "1px solid #222", borderRadius: 16, padding: "60px 48px", textAlign: "center" },
   trophyWrap: { marginBottom: 32 },
   trophyRing: { width: 88, height: 88, borderRadius: "50%", border: "2px solid #B8860B", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", background: "rgba(184,134,11,0.08)", boxShadow: "0 0 40px rgba(184,134,11,0.2)" },
   trophyIcon: { fontSize: 40 },
-  successTitle: { fontSize: 42, fontWeight: 900, color: "#fff", margin: "0 0 12px", fontFamily: "'Georgia', serif" },
+  successTitle: { fontSize: 42, fontWeight: 900, color: "#fff", margin: "0 0 12px" },
   successSub: { fontSize: 16, color: "#999", marginBottom: 32 },
   successDivider: { width: 48, height: 2, background: "#CC0000", margin: "0 auto 32px" },
   successBody: { fontSize: 15, color: "#bbb", lineHeight: 1.7, marginBottom: 16 },
   successBadge: { background: "rgba(204,0,0,0.08)", border: "1px solid rgba(204,0,0,0.2)", borderRadius: 8, padding: "14px 20px", margin: "32px 0 24px" },
   successFooter: { fontSize: 13, color: "#555" },
-
-  // Footer
   footer: { borderTop: "1px solid #1a1a1a", padding: "24px", textAlign: "center", marginTop: 20 },
   footerText: { fontSize: 13, color: "#444" },
 };
 
-// ── CSS ANIMATIONS & FOCUS STATES ──
 const css = `
   .mothers-input:focus { border-color: #CC0000 !important; box-shadow: 0 0 0 3px rgba(204,0,0,0.1); }
   .drop-zone:hover { border-color: #CC0000 !important; background: rgba(204,0,0,0.03) !important; }
