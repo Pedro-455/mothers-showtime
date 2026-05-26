@@ -107,15 +107,7 @@ export default function CorvetteDemo() {
           </div>
         </div>
 
-        {/* DETAILING NOTE */}
-        <div style={styles.detailBox}>
-          <div style={styles.detailBoxInner}>
-            <p style={styles.detailBoxTitle}>✨ Detailed with Mothers California Gold</p>
-            <p style={styles.detailBoxText}>
-              This vehicle was professionally detailed using Mothers California Gold ceramic products — the same products trusted by Corvette enthusiasts and show car owners worldwide. The finish you see is achievable on your own vehicle.
-            </p>
-          </div>
-        </div>
+
 
         {/* LEAD CAPTURE */}
         {!submitted ? (
