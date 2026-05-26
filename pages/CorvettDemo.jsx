@@ -29,7 +29,7 @@ export default function CorvetteDemo() {
 
       {/* HERO */}
       <div style={styles.hero}>
-        <img src="/corvette-z06.jpg" alt="Corvette Z06" style={styles.heroImg} />
+        <img src="/corvette-z06.JPG" alt="Corvette Z06" style={styles.heroImg} />
         <div style={styles.heroOverlay} />
         <div style={styles.heroBadge}>
           <span style={styles.heroBadgeText}>CORVETTE NEW ZEALAND</span>
@@ -281,4 +281,3 @@ const css = `
     .stats-bar { grid-template-columns: repeat(2, 1fr) !important; }
   }
 `;
-
