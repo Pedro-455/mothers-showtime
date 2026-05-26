@@ -3,6 +3,7 @@ import Register from "./pages/b7k9f2-register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import CorvetteDemo from "./pages/CorvettDemo.jsx";
 import CadillacDemo from "./pages/CadillacDemo.jsx";
+import YukonDemo from "./pages/YukonDemo.jsx";
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/corvette-z06" element={<CorvetteDemo />} />
         <Route path="/cadillac-lyriq" element={<CadillacDemo />} />
+        <Route path="/gmc-yukon" element={<YukonDemo />} />
         <Route
           path="*"
           element={
