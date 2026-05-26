@@ -413,7 +413,7 @@ export default function Register() {
       <div style={styles.footer}>
         <div style={styles.footerInner}>
           <p style={styles.footerPowered}>Powered by</p>
-          <img src="/Mothers Logo Red.png" alt="Mothers Polish" style={styles.footerLogo} />
+          <img src="/Mothers Logo Red.png" alt="Mothers Polish" style={{ width: 120, height: "auto", opacity: 0.8 }} />
         </div>
       </div>
     </div>
