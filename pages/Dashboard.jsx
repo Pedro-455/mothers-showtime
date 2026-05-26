@@ -292,66 +292,78 @@ export default function Dashboard() {
 const styles = {
   page: { minHeight: "100vh", background: "#0a0a0a", fontFamily: "'Georgia', serif", color: "#f0f0f0", padding: "0 0 40px" },
   pinPage: { minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Georgia', serif" },
-  pinCard: { background: "#111", border: "1px solid #222", borderRadius: 16, padding: "52px 48px", textAlign: "center", width: "100%", maxWidth: 380 },
-  pinLogo: { width: 56, height: 56, borderRadius: "50%", background: "#CC0000", color: "#fff", fontSize: 26, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", boxShadow: "0 0 30px rgba(204,0,0,0.3)" },
-  pinTitle: { fontSize: 26, fontWeight: 900, color: "#fff", margin: "0 0 6px" },
-  pinSub: { fontSize: 13, color: "#666", margin: 0, letterSpacing: 2, textTransform: "uppercase" },
-  pinDivider: { width: 40, height: 2, background: "#CC0000", margin: "20px auto" },
+
+  // PIN screen
+  pinCard: { background: "#141414", border: "2px solid #D4AF37", borderRadius: 16, padding: "52px 48px", textAlign: "center", width: "100%", maxWidth: 400, boxShadow: "0 0 60px rgba(212,175,55,0.1)" },
+  pinLogo: { width: 72, height: 72, borderRadius: "50%", background: "#CC0000", color: "#fff", fontSize: 34, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", boxShadow: "0 0 50px rgba(204,0,0,0.4)" },
+  pinTitle: { fontSize: 28, fontWeight: 900, color: "#fff", margin: "0 0 6px" },
+  pinSub: { fontSize: 12, color: "#D4AF37", margin: 0, letterSpacing: 3, textTransform: "uppercase" },
+  pinDivider: { width: 48, height: 3, background: "#CC0000", margin: "20px auto", borderRadius: 2 },
   pinLabel: { fontSize: 13, color: "#888", marginBottom: 12 },
-  pinInput: { background: "#1a1a1a", border: "1px solid #333", borderRadius: 8, padding: "14px", fontSize: 24, color: "#fff", width: "100%", boxSizing: "border-box", textAlign: "center", letterSpacing: 8, marginBottom: 8, outline: "none" },
+  pinInput: { background: "#e8e8e8", border: "2px solid #ccc", borderRadius: 8, padding: "14px", fontSize: 28, color: "#111", width: "100%", boxSizing: "border-box", textAlign: "center", letterSpacing: 10, marginBottom: 8, outline: "none", fontFamily: "'Georgia', serif" },
   pinInputError: { borderColor: "#CC0000" },
   pinError: { color: "#CC0000", fontSize: 13, marginBottom: 12 },
-  pinBtn: { background: "#CC0000", color: "#fff", border: "none", borderRadius: 8, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", marginTop: 8, fontFamily: "'Georgia', serif" },
-  pinFooter: { fontSize: 12, color: "#444", marginTop: 20 },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "28px 32px", borderBottom: "1px solid #1a1a1a" },
-  headerTitle: { fontSize: 28, fontWeight: 900, color: "#fff", margin: "0 0 4px" },
-  headerSub: { fontSize: 13, color: "#666", margin: 0, letterSpacing: 1 },
+  pinBtn: { background: "#CC0000", color: "#fff", border: "3px solid #CC0000", borderRadius: 8, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", marginTop: 8, fontFamily: "'Georgia', serif", textTransform: "uppercase", letterSpacing: 2 },
+  pinFooter: { fontSize: 12, color: "#555", marginTop: 20 },
+
+  // Header
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 32px", borderBottom: "3px solid #CC0000", background: "#0a0a0a" },
+  headerTitle: { fontSize: 32, fontWeight: 900, color: "#fff", margin: "0 0 4px" },
+  headerSub: { fontSize: 13, color: "#D4AF37", margin: 0, letterSpacing: 2, textTransform: "uppercase" },
   headerActions: { display: "flex", gap: 12 },
-  refreshBtn: { background: "#1a1a1a", color: "#aaa", border: "1px solid #333", borderRadius: 8, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontFamily: "'Georgia', serif" },
-  logoutBtn: { background: "#CC0000", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif" },
+  refreshBtn: { background: "#141414", color: "#D4AF37", border: "1px solid #D4AF37", borderRadius: 8, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontFamily: "'Georgia', serif" },
+  logoutBtn: { background: "#CC0000", color: "#fff", border: "3px solid #CC0000", borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif" },
+
+  // Stats
   statsGrid: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, padding: "24px 32px" },
-  statCard: { background: "#111", border: "1px solid #1a1a1a", borderRadius: 10, padding: "20px 16px" },
-  statLabel: { fontSize: 12, color: "#666", margin: "0 0 8px", letterSpacing: 1, textTransform: "uppercase" },
-  statValue: { fontSize: 32, fontWeight: 900, margin: 0 },
-  tableWrap: { margin: "0 32px", background: "#111", border: "1px solid #1a1a1a", borderRadius: 12, overflow: "hidden" },
+  statCard: { background: "#141414", border: "1px solid #D4AF37", borderRadius: 10, padding: "20px 16px", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" },
+  statLabel: { fontSize: 11, color: "#D4AF37", margin: "0 0 8px", letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 },
+  statValue: { fontSize: 36, fontWeight: 900, margin: 0 },
+
+  // Table
+  tableWrap: { margin: "0 32px", background: "#141414", border: "1px solid #D4AF37", borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" },
   table: { width: "100%", borderCollapse: "collapse" },
   tableHeadRow: { background: "#CC0000" },
-  th: { padding: "14px 16px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "#fff", letterSpacing: 1, textTransform: "uppercase" },
-  tableRow: { borderBottom: "1px solid #1a1a1a" },
+  th: { padding: "14px 16px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "#fff", letterSpacing: 2, textTransform: "uppercase" },
+  tableRow: { borderBottom: "1px solid #1e1e1e" },
   td: { padding: "16px", verticalAlign: "top" },
   entrantName: { fontWeight: 700, color: "#fff", margin: "0 0 4px", fontSize: 15 },
-  entrantDetail: { fontSize: 12, color: "#666", margin: "0 0 2px" },
+  entrantDetail: { fontSize: 12, color: "#888", margin: "0 0 2px" },
   vehicleName: { fontWeight: 700, color: "#fff", margin: "0 0 4px", fontSize: 15 },
-  vehicleDetail: { fontSize: 12, color: "#888", margin: "0 0 4px" },
-  vehicleStory: { fontSize: 12, color: "#555", margin: 0, fontStyle: "italic" },
-  photoBtn: { background: "#1a1a1a", border: "1px solid #333", color: "#aaa", borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 13, fontFamily: "'Georgia', serif" },
+  vehicleDetail: { fontSize: 12, color: "#D4AF37", margin: "0 0 4px" },
+  vehicleStory: { fontSize: 12, color: "#666", margin: 0, fontStyle: "italic" },
+  photoBtn: { background: "#1a1a1a", border: "1px solid #D4AF37", color: "#D4AF37", borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 13, fontFamily: "'Georgia', serif" },
   statusSelect: { border: "none", borderRadius: 6, padding: "6px 10px", color: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "'Georgia', serif" },
-  deleteBtn: { background: "transparent", border: "1px solid #333", color: "#CC0000", borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 13, fontFamily: "'Georgia', serif" },
-  photoViewerHeader: { display: "flex", alignItems: "center", gap: 24, padding: "24px 32px", borderBottom: "1px solid #1a1a1a", flexWrap: "wrap" },
-  backBtn: { background: "#1a1a1a", border: "1px solid #333", color: "#aaa", borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontSize: 14, fontFamily: "'Georgia', serif", whiteSpace: "nowrap" },
-  photoViewerTitle: { fontSize: 22, fontWeight: 900, color: "#fff", margin: "0 0 4px" },
-  photoViewerSub: { fontSize: 13, color: "#666", margin: 0 },
+  deleteBtn: { background: "transparent", border: "1px solid #444", color: "#CC0000", borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontSize: 13, fontFamily: "'Georgia', serif" },
+
+  // Photo viewer
+  photoViewerHeader: { display: "flex", alignItems: "center", gap: 24, padding: "24px 32px", borderBottom: "3px solid #CC0000", flexWrap: "wrap", background: "#0a0a0a" },
+  backBtn: { background: "#141414", border: "1px solid #D4AF37", color: "#D4AF37", borderRadius: 8, padding: "10px 20px", cursor: "pointer", fontSize: 14, fontFamily: "'Georgia', serif", whiteSpace: "nowrap" },
+  photoViewerTitle: { fontSize: 24, fontWeight: 900, color: "#fff", margin: "0 0 4px" },
+  photoViewerSub: { fontSize: 13, color: "#D4AF37", margin: 0 },
   detailGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, padding: "24px 32px 0" },
-  detailCard: { background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, padding: "16px" },
-  detailLabel: { fontSize: 11, color: "#CC0000", letterSpacing: 2, fontWeight: 700, margin: "0 0 8px" },
+  detailCard: { background: "#141414", border: "1px solid #D4AF37", borderRadius: 8, padding: "16px" },
+  detailLabel: { fontSize: 11, color: "#D4AF37", letterSpacing: 2, fontWeight: 700, margin: "0 0 8px" },
   detailValue: { fontSize: 15, color: "#fff", margin: 0 },
-  storyBox: { margin: "24px 32px", background: "#111", border: "1px solid #1a1a1a", borderRadius: 10, padding: "20px 24px" },
-  storyLabel: { fontSize: 11, color: "#CC0000", letterSpacing: 2, fontWeight: 700, margin: "0 0 10px" },
-  storyText: { fontSize: 15, color: "#ccc", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" },
+  storyBox: { margin: "24px 32px", background: "#141414", border: "1px solid #D4AF37", borderRadius: 10, padding: "20px 24px" },
+  storyLabel: { fontSize: 11, color: "#D4AF37", letterSpacing: 2, fontWeight: 700, margin: "0 0 10px" },
+  storyText: { fontSize: 15, color: "#ccc", lineHeight: 1.8, margin: 0, whiteSpace: "pre-wrap" },
   photoGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16, padding: "24px 32px" },
-  photoItem: { position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "4/3", border: "1px solid #1a1a1a" },
+  photoItem: { position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "4/3", border: "2px solid #D4AF37" },
   photoImg: { width: "100%", height: "100%", objectFit: "cover", cursor: "pointer", display: "block" },
   mainBadge: { position: "absolute", top: 10, left: 10, background: "#CC0000", color: "#fff", fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "4px 8px", borderRadius: 4 },
+
+  // Footer
   footer: { borderTop: "1px solid #1a1a1a", padding: "20px 32px", marginTop: 40 },
-  footerText: { fontSize: 12, color: "#333", textAlign: "center" },
+  footerText: { fontSize: 12, color: "#444", textAlign: "center" },
 };
 
 const css = `
-  .pin-input:focus { border-color: #CC0000 !important; box-shadow: 0 0 0 3px rgba(204,0,0,0.1); }
-  .red-btn:hover { background: #aa0000 !important; }
-  .refresh-btn:hover { border-color: #CC0000 !important; color: #fff !important; }
-  .table-row:hover { background: #151515 !important; }
-  .photo-btn:hover { border-color: #CC0000 !important; color: #fff !important; }
-  .delete-btn:hover { background: rgba(204,0,0,0.1) !important; }
-  .back-btn:hover { border-color: #CC0000 !important; color: #fff !important; }
+  .pin-input:focus { border-color: #CC0000 !important; box-shadow: 0 0 0 4px rgba(204,0,0,0.15) !important; background: #fff !important; }
+  .red-btn:hover { background: #aa0000 !important; border-color: #aa0000 !important; }
+  .refresh-btn:hover { background: #CC0000 !important; border-color: #CC0000 !important; color: #fff !important; }
+  .table-row:hover { background: #1a1a1a !important; }
+  .photo-btn:hover { background: #D4AF37 !important; color: #000 !important; }
+  .delete-btn:hover { background: rgba(204,0,0,0.15) !important; border-color: #CC0000 !important; }
+  .back-btn:hover { background: #D4AF37 !important; color: #000 !important; }
 `;
