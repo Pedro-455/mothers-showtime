@@ -24,6 +24,7 @@ export default function CadillacDemo() {
   ];
 
   return (
+    <div style={styles.pageOuter}>
     <div style={styles.page}>
       <style>{css}</style>
 
@@ -194,11 +195,13 @@ export default function CadillacDemo() {
 
       </div>
     </div>
+    </div>
   );
 }
 
 const styles = {
-  page: { minHeight: "100vh", background: "#0a0a0a", fontFamily: "'Georgia', serif", color: "#f0f0f0" },
+  pageOuter: { minHeight: "100vh", background: "#1a1a1a", padding: "16px", display: "flex", justifyContent: "center", alignItems: "flex-start" },
+  page: { width: "100%", maxWidth: 820, background: "#0a0a0a", fontFamily: "'Georgia', serif", color: "#f0f0f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 48px rgba(0,0,0,0.8)" },
   hero: { position: "relative", height: "70vw", maxHeight: 600, minHeight: 300, overflow: "hidden", background: "#111" },
   heroImg: { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 40%", display: "block" },
   heroOverlay: { position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.75) 100%)" },
