@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import heic2any from "heic2any";
+import { QRCodeSVG } from "qrcode.react";
 
 const SHOW_ID = "637da564-ed16-4d81-ac33-5652ceda1f89"; // Chrome 26
 
@@ -51,6 +52,7 @@ export default function Register() {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedCarId, setSubmittedCarId] = useState(null);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState("");
 
@@ -167,7 +169,12 @@ export default function Register() {
       for (let i = 0; i < photos.length; i++) {
         setProgress(`Compressing and uploading photo ${i + 1} of ${photos.length}...`);
         const compressed = await compressImage(photos[i]);
-        const fileName = `${car.id}/${Date.now()}-${i}.jpg`;
+        const fileName = `${car.id}/${Date.now()}-${i}.jpg  @media print {
+    body * { visibility: hidden; }
+    #qr-print-area, #qr-print-area * { visibility: visible; }
+    #qr-print-area { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+  }
+`;
         const { error: uploadError } = await supabase.storage
           .from("car-photos")
           .upload(fileName, compressed, { contentType: "image/jpeg" });
@@ -189,6 +196,7 @@ export default function Register() {
           .eq("id", car.id);
       }
 
+      setSubmittedCarId(car.id);
       setSubmitted(true);
     } catch (err) {
       setError("Something went wrong. Please try again or contact us.");
@@ -238,10 +246,10 @@ export default function Register() {
       <div style={styles.hero} className="hero">
         <div style={styles.heroOverlay} />
         <div style={styles.heroContent}>
-          <p style={styles.heroEyebrow}>INVITE ONLY · VIP REGISTRATION</p>
-          <h1 style={styles.heroTitle}>SHOWCASE</h1>
-          <p style={styles.heroSub}>3–4 OCTOBER 2026 · AUCKLAND SHOWGROUNDS</p>
+          <img src="/Chrome-Showcase-Logo.png" alt="Chrome Showcase" style={styles.chromeLogo} />
           <div style={styles.heroDivider} />
+          <p style={styles.heroEyebrow}>INVITE ONLY · VIP REGISTRATION</p>
+          <p style={styles.heroSub}>3–4 OCTOBER 2026 · AUCKLAND SHOWGROUNDS</p>
           <p style={styles.heroBody}>
             You've been personally selected to enter one of New Zealand's most prestigious vehicle shows. 
             Complete your registration below — our judges and the public will see your story and photos on the day.
