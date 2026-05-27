@@ -246,7 +246,7 @@ export default function Register() {
       <div style={styles.hero} className="hero">
         <div style={styles.heroOverlay} />
         <div style={styles.heroContent}>
-          <img src="/Chrome-Showcase-Logo.png" alt="Chrome Showcase" style={styles.chromeLogo} />
+          <img src="/Chrome-Showcase-Logo.png" alt="Chrome Showcase" style={{ width: "min(560px, 85vw)", height: "auto", margin: "0 auto 16px", display: "block" }} />
           <div style={styles.heroDivider} />
           <p style={styles.heroEyebrow}>INVITE ONLY · VIP REGISTRATION</p>
           <p style={styles.heroSub}>3–4 OCTOBER 2026 · AUCKLAND SHOWGROUNDS</p>
