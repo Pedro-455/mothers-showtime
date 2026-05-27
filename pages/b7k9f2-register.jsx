@@ -608,8 +608,8 @@ const styles = {
   // QR Code
   qrSection: { margin: "24px 0", textAlign: "center" },
   qrTitle: { fontSize: 11, fontWeight: 700, color: "#D4AF37", letterSpacing: 3, marginBottom: 16 },
-  qrWrap: { background: "#fff", borderRadius: 12, padding: "24px", display: "inline-block", border: "3px solid #D4AF37", marginBottom: 16 },
-  carNumberBadge: { background: "#CC0000", color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 2, padding: "8px 24px", borderRadius: 6, display: "inline-block", marginBottom: 16 },
+  qrWrap: { background: "#fff", borderRadius: 12, padding: "24px", display: "block", border: "3px solid #D4AF37", marginBottom: 16, width: "100%", boxSizing: "border-box", textAlign: "center" },
+  carNumberBadge: { fontSize: 15, fontWeight: 700, color: "#111", margin: "0 0 8px", textAlign: "center" },
   qrCarName: { fontSize: 15, fontWeight: 700, color: "#111", margin: "12px 0 4px" },
   qrName: { fontSize: 13, color: "#444", margin: "0 0 4px" },
   qrEvent: { fontSize: 11, color: "#888", letterSpacing: 1, margin: 0 },
