@@ -60,6 +60,42 @@ export default function Dashboard() {
     loadEntries();
   }
 
+  function exportCSV() {
+    const exportPin = window.prompt("Enter export PIN to download data:");
+    if (exportPin !== "3500") {
+      alert("Incorrect PIN — export cancelled.");
+      return;
+    }
+    const headers = ["Car #", "Name", "Email", "Phone", "Year", "Make", "Model", "Colour", "Engine", "Transmission", "Status", "Photos"];
+    const rows = entries.map(car => {
+      const rawUrls = typeof car.photo_urls === 'string' ? JSON.parse(car.photo_urls || '[]') : car.photo_urls;
+      const photoCount = rawUrls ? rawUrls.length : car.photo_url ? 1 : 0;
+      return [
+        car.judging_number || "",
+        car.entrant_name || car.owner_name || "",
+        car.registration_email || "",
+        car.registration_phone || "",
+        car.year || "",
+        car.make || "",
+        car.model || "",
+        car.color || "",
+        car.engine || "",
+        car.transmission || "",
+        car.status || "",
+        photoCount,
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    });
+    const csv = [headers.join(","), ...rows].join("
+");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Chrome26-Entries.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // ── PIN SCREEN ──
   if (!loggedIn) {
     return (
@@ -202,6 +238,7 @@ export default function Dashboard() {
         </div>
         <div style={styles.headerActions}>
           <button style={styles.refreshBtn} onClick={loadEntries} className="refresh-btn">↻ Refresh</button>
+          <button style={styles.exportBtn} onClick={exportCSV} className="export-btn">⬇ Export CSV</button>
           <button style={styles.logoutBtn} onClick={() => setLoggedIn(false)} className="red-btn">Logout</button>
         </div>
       </div>
@@ -331,6 +368,7 @@ const styles = {
   headerActions: { display: "flex", gap: 12 },
   refreshBtn: { background: "#141414", color: "#D4AF37", border: "1px solid #D4AF37", borderRadius: 8, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontFamily: "'Georgia', serif" },
   logoutBtn: { background: "#CC0000", color: "#fff", border: "3px solid #CC0000", borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif" },
+  exportBtn: { background: "#D4AF37", color: "#000", border: "3px solid #D4AF37", borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif" },
 
   // Stats
   statsGrid: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, padding: "24px 32px" },
@@ -384,4 +422,5 @@ const css = `
   .photo-btn:hover { background: #D4AF37 !important; color: #000 !important; }
   .delete-btn:hover { background: rgba(204,0,0,0.15) !important; border-color: #CC0000 !important; }
   .back-btn:hover { background: #D4AF37 !important; color: #000 !important; }
+  .export-btn:hover { background: #c9a227 !important; border-color: #c9a227 !important; }
 `;
