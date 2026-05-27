@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 
-const PINS = ["2746"];
+const PINS = ["2746", "5887", "0990", "2178"];
 const EXPORT_PIN = "3500";
 const SHOW_ID = "637da564-ed16-4d81-ac33-5652ceda1f89";
 
