@@ -313,6 +313,11 @@ const styles = {
   pinBtn: { background: "#CC0000", color: "#fff", border: "3px solid #CC0000", borderRadius: 8, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", marginTop: 8, fontFamily: "'Georgia', serif", textTransform: "uppercase", letterSpacing: 2 },
   pinFooter: { fontSize: 12, color: "#555", marginTop: 20 },
 
+  // Powered by Mothers
+  poweredBy: { background: "#0a0a0a", padding: "16px 24px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, borderBottom: "1px solid #1a1a1a" },
+  poweredByText: { fontSize: 12, color: "#555", letterSpacing: 1 },
+  poweredByLogo: { height: 28, width: "auto" },
+
   // Header
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 32px", borderBottom: "3px solid #CC0000", background: "#0a0a0a" },
   headerTitle: { fontSize: 32, fontWeight: 900, color: "#fff", margin: "0 0 4px" },
