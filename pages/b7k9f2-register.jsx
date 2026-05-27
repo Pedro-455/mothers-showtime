@@ -560,7 +560,7 @@ const styles = {
   spinner: { width: 18, height: 18, border: "2px solid #333", borderTop: "2px solid #CC0000", borderRadius: "50%", flexShrink: 0 },
 
   // Submit button
-  submitBtn: { background: "#CC0000", color: "#fff", border: "3px solid #CC0000", borderRadius: 10, padding: "20px 32px", fontSize: 18, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5, transition: "all 0.2s", fontFamily: "'Georgia', serif", marginTop: 8, textTransform: "uppercase", letterSpacing: 2 },
+  submitBtn: { background: "#CC0000", color: "#fff", border: "3px solid #CC0000", borderRadius: 10, padding: "20px 32px", fontSize: 18, fontWeight: 700, cursor: "pointer", letterSpacing: 2, transition: "all 0.2s", fontFamily: "'Georgia', serif", marginTop: 8, textTransform: "uppercase" },
   submitDisabled: { background: "#444", border: "3px solid #444", cursor: "not-allowed" },
   formFooter: { fontSize: 12, color: "#555", textAlign: "center", marginTop: 16, lineHeight: 1.6 },
 
