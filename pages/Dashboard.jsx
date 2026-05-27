@@ -189,6 +189,12 @@ export default function Dashboard() {
     <div style={styles.page}>
       <style>{css}</style>
 
+      {/* POWERED BY MOTHERS */}
+      <div style={styles.poweredBy}>
+        <span style={styles.poweredByText}>Powered by</span>
+        <img src="/Mothers Logo Red.png" alt="Mothers Polish" style={styles.poweredByLogo} />
+      </div>
+
       <div style={styles.header}>
         <div>
           <h1 style={styles.headerTitle}>Chrome 26</h1>
