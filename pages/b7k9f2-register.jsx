@@ -53,6 +53,7 @@ export default function Register() {
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedCarId, setSubmittedCarId] = useState(null);
+  const [carNumber, setCarNumber] = useState(null);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState("");
 
@@ -110,8 +111,12 @@ export default function Register() {
     setUploading(true);
 
     try {
-      // 1. Insert into cars table — retry once if first attempt fails
+      // 1. Get next car number
       setProgress("Saving your details...");
+      const { data: numberData } = await supabase.rpc("get_next_car_number");
+      const assignedNumber = numberData || 47;
+
+      // 2. Insert into cars table — retry once if first attempt fails
       let car, carError;
 
       // First attempt
@@ -131,6 +136,7 @@ export default function Register() {
           story: form.story,
           car_story: form.story,
           status: "pending",
+          judging_number: assignedNumber,
           submitted_at: new Date().toISOString(),
         })
         .select()
@@ -156,6 +162,7 @@ export default function Register() {
             story: form.story,
             car_story: form.story,
             status: "pending",
+            judging_number: assignedNumber,
             submitted_at: new Date().toISOString(),
           })
           .select()
@@ -197,6 +204,7 @@ export default function Register() {
       }
 
       setSubmittedCarId(car.id);
+      setCarNumber(assignedNumber);
       setSubmitted(true);
     } catch (err) {
       setError("Something went wrong. Please try again or contact us.");
