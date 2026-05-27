@@ -41,7 +41,10 @@ export default function Dashboard() {
     const approved = cars.filter(c => c.status === "approved").length;
     const rejected = cars.filter(c => c.status === "rejected").length;
     const pending = cars.filter(c => c.status === "pending").length;
-    const photos = cars.reduce((acc, c) => acc + (c.photo_urls ? c.photo_urls.length : c.photo_url ? 1 : 0), 0);
+    const photos = cars.reduce((acc, c) => {
+      const urls = typeof c.photo_urls === 'string' ? JSON.parse(c.photo_urls) : c.photo_urls;
+      return acc + (urls ? urls.length : c.photo_url ? 1 : 0);
+    }, 0);
     setStats({ total, approved, rejected, pending, photos });
     setLoading(false);
   }
@@ -91,7 +94,10 @@ export default function Dashboard() {
 
   // ── PHOTO / DETAIL VIEWER ──
   if (selectedEntry) {
-    const photos = selectedEntry.photo_urls || (selectedEntry.photo_url ? [selectedEntry.photo_url] : []);
+    const rawUrls = selectedEntry.photo_urls;
+    const photos = rawUrls
+      ? (typeof rawUrls === 'string' ? JSON.parse(rawUrls) : rawUrls)
+      : (selectedEntry.photo_url ? [selectedEntry.photo_url] : []);
     return (
       <div style={styles.page}>
         <style>{css}</style>
@@ -228,7 +234,8 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {entries.map((car, i) => {
-                const photoCount = car.photo_urls ? car.photo_urls.length : car.photo_url ? 1 : 0;
+                const rawPhotoUrls = typeof car.photo_urls === 'string' ? JSON.parse(car.photo_urls || '[]') : car.photo_urls;
+                const photoCount = rawPhotoUrls ? rawPhotoUrls.length : car.photo_url ? 1 : 0;
                 return (
                   <tr key={car.id} style={styles.tableRow} className="table-row">
                     <td style={styles.td}>{car.judging_number || i + 1}</td>
