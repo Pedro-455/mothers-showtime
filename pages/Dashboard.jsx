@@ -83,7 +83,7 @@ export default function Dashboard() {
         car.transmission || "",
         car.status || "",
         photoCount,
-      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
+      ].map(v => JSON.stringify(String(v))).join(",");
     });
     const csv = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
