@@ -4,6 +4,7 @@ import heic2any from "heic2any";
 import { QRCodeSVG } from "qrcode.react";
 
 const SHOW_ID = "637da564-ed16-4d81-ac33-5652ceda1f89"; // Chrome 26
+const SECRET_WORD = "Chrome26"; // Change this each show
 
 async function compressImage(file, maxSizeKB = 900) {
   return new Promise((resolve) => {
@@ -50,6 +51,9 @@ export default function Register() {
   const [photos, setPhotos] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [dragOver, setDragOver] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedCarId, setSubmittedCarId] = useState(null);
@@ -111,7 +115,22 @@ export default function Register() {
     setUploading(true);
 
     try {
-      // 1. Get next car number
+      // 1. Check for duplicate mobile
+      setProgress("Checking your details...");
+      const { data: existing } = await supabase
+        .from("cars")
+        .select("judging_number, make, model, year")
+        .eq("show_id", SHOW_ID)
+        .eq("registration_phone", form.mobile)
+        .single();
+
+      if (existing) {
+        setError(`You're already registered! Your car is #${existing.judging_number} — ${existing.year} ${existing.make} ${existing.model}. Contact us if you need to make changes.`);
+        setUploading(false);
+        return;
+      }
+
+      // 2. Get next car number
       setProgress("Saving your details...");
       const { data: numberData } = await supabase.rpc("get_next_car_number");
       const assignedNumber = numberData || 47;
@@ -240,6 +259,56 @@ export default function Register() {
             </span>
           </div>
           <p style={styles.successFooter}>Presented by <strong>Mothers Polish</strong> — The Detailer's Choice Since 1972</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PASSWORD SCREEN ──
+  if (!unlocked) {
+    return (
+      <div style={styles.page}>
+        <style>{css}</style>
+        <div style={styles.passwordPage}>
+          <div style={styles.passwordCard}>
+            <img src="/Chrome-Showcase-Logo.png" alt="Chrome Showcase" style={{ width: "min(320px, 80%)", height: "auto", margin: "0 auto 24px", display: "block" }} />
+            <div style={styles.pinDivider} />
+            <p style={styles.passwordLabel}>Enter your registration code</p>
+            <p style={styles.passwordHint}>You should have received this with your invitation</p>
+            <input
+              style={{ ...styles.passwordInput, ...(passwordError ? styles.passwordInputError : {}) }}
+              type="text"
+              placeholder="Enter code here"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setPasswordError(false); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (password.trim().toLowerCase() === SECRET_WORD.toLowerCase()) {
+                    setUnlocked(true);
+                  } else {
+                    setPasswordError(true);
+                  }
+                }
+              }}
+              className="mothers-input"
+              autoFocus
+            />
+            {passwordError && <p style={styles.passwordError}>Incorrect code — please check your invitation and try again</p>}
+            <button
+              style={styles.passwordBtn}
+              onClick={() => {
+                if (password.trim().toLowerCase() === SECRET_WORD.toLowerCase()) {
+                  setUnlocked(true);
+                } else {
+                  setPasswordError(true);
+                }
+              }}
+              className="submit-btn"
+            >
+              Continue to Registration →
+            </button>
+            <p style={styles.passwordFooter}>Need help? Contact the show organiser.</p>
+          </div>
         </div>
       </div>
     );
