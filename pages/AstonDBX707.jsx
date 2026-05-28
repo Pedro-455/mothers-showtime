@@ -31,7 +31,7 @@ export default function AstonDBX707() {
 
         {/* ASTON MARTIN HEADER */}
         <div style={styles.amHeader}>
-          <img src="/aston-logo-black.svg" alt="Aston Martin" style={styles.amLogo} />
+          <img src="/aston-logo-black.png" alt="Aston Martin" style={styles.amLogo} />
           <p style={styles.amDealer}>Auckland · 119 Great North Road, Grey Lynn</p>
         </div>
 
@@ -148,7 +148,7 @@ export default function AstonDBX707() {
 
           {/* DEALER INFO */}
           <div style={styles.dealerBox}>
-            <img src="/aston-logo-black.svg" alt="Aston Martin" style={styles.dealerLogoSmall} />
+            <img src="/aston-logo-black.png" alt="Aston Martin" style={styles.dealerLogoSmall} />
             <p style={styles.dealerName}>Aston Martin Auckland</p>
             <p style={styles.dealerAddress}>119 Great North Road, Grey Lynn, Auckland 1021</p>
             <a href="tel:+6499758080" style={styles.dealerPhone}>+64 9 975 8080</a>
