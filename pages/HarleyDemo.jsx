@@ -24,186 +24,187 @@ export default function HarleyDemo() {
   ];
 
   return (
-    <div style={styles.page}>
-      <style>{css}</style>
+    <div style={styles.pageOuter}>
+      <div style={styles.page}>
+        <style>{css}</style>
 
-      {/* HEADER WITH DEALER LOGO */}
-      <div style={styles.dealerHeader}>
-        <img src="/ahd.png" alt="Auckland Harley Davidson" style={styles.dealerLogo} />
-      </div>
-
-      {/* HERO */}
-      <div style={styles.hero}>
-        <img src="/flhx.jpg" alt="2025 Harley-Davidson Street Glide" style={styles.heroImg} />
-        <div style={styles.heroOverlay} />
-        <div style={styles.heroContent}>
-          <p style={styles.heroEyebrow}>2025 HARLEY-DAVIDSON</p>
-          <h1 style={styles.heroTitle}>Street Glide®</h1>
-          <p style={styles.heroSub}>FLHX · Midnight Firestorm · Milwaukee-Eight 117</p>
-        </div>
-      </div>
-
-      {/* HEADLINE STATS */}
-      <div style={styles.statsBar}>
-        {[
-          { value: "117", label: "Cubic Inches" },
-          { value: "177Nm", label: "Torque" },
-          { value: "1,923", label: "CC" },
-          { value: "3.99%", label: "Finance Available" },
-        ].map((s) => (
-          <div key={s.label} style={styles.statItem}>
-            <p style={styles.statValue}>{s.value}</p>
-            <p style={styles.statLabel}>{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div style={styles.content}>
-
-        {/* STORY */}
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>History Rewritten</h2>
-          <p style={styles.bodyText}>
-            After nearly two decades on the open road, the Street Glide® redefines what a touring motorcycle can be. The all-new Milwaukee-Eight® 117 V-twin with liquid-cooled cylinder heads delivers big power without the heat — breathing easy through a high-flow intake and exhaling through an unmistakable exhaust note that announces your arrival long before you get there.
-          </p>
-          <p style={styles.bodyText}>
-            This Midnight Firestorm example — finished in dramatic black with subtle ghost flame graphics — is one of the most striking Street Glides ever built. Hand-adjustable rear suspension, three pre-programmed ride modes, and a full touchscreen infotainment system make every mile effortless. Available now at Auckland Harley-Davidson on 3.99% Harley-Davidson Finance.
-          </p>
-          <a href="https://aucklandharleydavidson.co.nz" target="_blank" rel="noopener noreferrer" style={styles.learnMore}>
-            View full inventory at Auckland Harley-Davidson →
-          </a>
+        {/* HEADER WITH DEALER LOGO */}
+        <div style={styles.dealerHeader}>
+          <img src="/ahd.png" alt="Auckland Harley Davidson" style={styles.dealerLogo} />
         </div>
 
-        {/* SPECS */}
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Specifications</h2>
-          <div style={styles.specsGrid}>
-            {specs.map((spec) => (
-              <div key={spec.label} style={styles.specItem}>
-                <p style={styles.specLabel}>{spec.label}</p>
-                <p style={styles.specValue}>{spec.value}</p>
-              </div>
-            ))}
+        {/* HERO */}
+        <div style={styles.hero}>
+          <img src="/flhx.jpg" alt="2025 Harley-Davidson Street Glide" style={styles.heroImg} />
+          <div style={styles.heroOverlay} />
+          <div style={styles.heroContent}>
+            <p style={styles.heroEyebrow}>2025 HARLEY-DAVIDSON</p>
+            <h1 style={styles.heroTitle}>Street Glide®</h1>
+            <p style={styles.heroSub}>FLHX · Midnight Firestorm · Milwaukee-Eight 117</p>
           </div>
         </div>
 
-        {/* FEATURES */}
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Street Glide Standard Features</h2>
-          <div style={styles.featureGrid}>
-            {[
-              "Liquid-Cooled Milwaukee-Eight 117",
-              "Touchscreen Infotainment System",
-              "200W 4-Channel Audio System",
-              "Fairing-Mounted Speakers",
-              "3 Ride Modes (Road/Sport/Rain)",
-              "Cornering ABS & Traction Control",
-              "Hand-Adjustable Rear Suspension",
-              "Apple CarPlay Compatible",
-              "LED Lighting Throughout",
-              "Batwing Fairing with Windshield",
-              "Hard Saddlebags",
-              "Midnight Firestorm Ghost Flames",
-            ].map((f) => (
-              <div key={f} style={styles.featureItem}>
-                <span style={styles.featureDot}>●</span>
-                <span>{f}</span>
-              </div>
-            ))}
+        {/* HEADLINE STATS */}
+        <div style={styles.statsBar}>
+          {[
+            { value: "117", label: "Cubic Inches" },
+            { value: "177Nm", label: "Torque" },
+            { value: "1,923", label: "CC" },
+            { value: "3.99%", label: "Finance Available" },
+          ].map((s) => (
+            <div key={s.label} style={styles.statItem}>
+              <p style={styles.statValue}>{s.value}</p>
+              <p style={styles.statLabel}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        <div style={styles.content}>
+
+          {/* STORY */}
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>History Rewritten</h2>
+            <p style={styles.bodyText}>
+              After nearly two decades on the open road, the Street Glide® redefines what a touring motorcycle can be. The all-new Milwaukee-Eight® 117 V-twin with liquid-cooled cylinder heads delivers big power without the heat — breathing easy through a high-flow intake and exhaling through an unmistakable exhaust note that announces your arrival long before you get there.
+            </p>
+            <p style={styles.bodyText}>
+              This Midnight Firestorm example — finished in dramatic black with subtle ghost flame graphics — is one of the most striking Street Glides ever built. Hand-adjustable rear suspension, three pre-programmed ride modes, and a full touchscreen infotainment system make every mile effortless. Available now at Auckland Harley-Davidson on 3.99% Harley-Davidson Finance.
+            </p>
+            <a href="https://aucklandharleydavidson.co.nz" target="_blank" rel="noopener noreferrer" style={styles.learnMore}>
+              View full inventory at Auckland Harley-Davidson →
+            </a>
           </div>
-        </div>
 
-        {/* FINANCE BOX */}
-        <div style={styles.offerBox}>
-          <p style={styles.offerTitle}>💰 Special Finance Rate</p>
-          <p style={styles.offerText}>
-            This Street Glide is available on 3.99% Harley-Davidson Finance — making New Zealand's most iconic touring motorcycle more accessible than ever. Stock #23106. Contact Auckland Harley-Davidson for full terms and conditions.
-          </p>
-          <a href="https://aucklandharleydavidson.co.nz" target="_blank" rel="noopener noreferrer" style={styles.offerLink}>
-            Enquire about finance at Auckland H-D →
-          </a>
-        </div>
+          {/* SPECS */}
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Specifications</h2>
+            <div style={styles.specsGrid}>
+              {specs.map((spec) => (
+                <div key={spec.label} style={styles.specItem}>
+                  <p style={styles.specLabel}>{spec.label}</p>
+                  <p style={styles.specValue}>{spec.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        {/* LEAD CAPTURE */}
-        {!submitted ? (
-          <div style={styles.leadSection}>
-            {!showForm ? (
-              <div style={styles.leadButtons}>
-                <h2 style={styles.leadTitle}>Interested in this Street Glide?</h2>
-                <p style={styles.leadSub}>Speak with the team at Auckland Harley-Davidson about a test ride or finance options.</p>
-                <button style={styles.leadBtn} onClick={() => setShowForm(true)} className="lead-btn">
-                  Request More Information →
-                </button>
-                <button style={styles.testDriveBtn} onClick={() => setShowForm(true)} className="test-btn">
-                  Book a Test Ride
-                </button>
-              </div>
-            ) : (
-              <div style={styles.formWrap}>
-                <h2 style={styles.leadTitle}>Get in Touch</h2>
-                <p style={styles.leadSub}>The Auckland Harley-Davidson team will contact you within 24 hours.</p>
-                <form onSubmit={handleSubmit} style={styles.form}>
-                  <div style={styles.fieldWrap}>
-                    <label style={styles.label}>Full Name *</label>
-                    <input style={styles.input} placeholder="e.g. John Smith" required
-                      value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="form-input" />
-                  </div>
-                  <div style={styles.grid2}>
-                    <div style={styles.fieldWrap}>
-                      <label style={styles.label}>Mobile *</label>
-                      <input style={styles.input} placeholder="021 234 5678" required
-                        value={formData.mobile} onChange={(e) => setFormData({...formData, mobile: e.target.value})}
-                        className="form-input" />
-                    </div>
-                    <div style={styles.fieldWrap}>
-                      <label style={styles.label}>Email *</label>
-                      <input style={styles.input} type="email" placeholder="john@email.com" required
-                        value={formData.email} onChange={(e) => setFormData({...formData, electric: e.target.value})}
-                        className="form-input" />
-                    </div>
-                  </div>
-                  <div style={styles.fieldWrap}>
-                    <label style={styles.label}>I'm interested in...</label>
-                    <select style={styles.input} value={formData.interest}
-                      onChange={(e) => setFormData({...formData, interest: e.target.value})}
-                      className="form-input">
-                      <option value="">Select an option</option>
-                      <option value="purchase">Purchasing this Street Glide</option>
-                      <option value="testride">Test ride</option>
-                      <option value="finance">3.99% finance options</option>
-                      <option value="tradeIn">Trade-in enquiry</option>
-                      <option value="info">General information</option>
-                    </select>
-                  </div>
-                  <button type="submit" style={styles.submitBtn} className="lead-btn">
-                    Send My Request →
+          {/* FEATURES */}
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Street Glide Standard Features</h2>
+            <div style={styles.featureGrid}>
+              {[
+                "Liquid-Cooled Milwaukee-Eight 117",
+                "Touchscreen Infotainment System",
+                "200W 4-Channel Audio System",
+                "Fairing-Mounted Speakers",
+                "3 Ride Modes (Road/Sport/Rain)",
+                "Cornering ABS & Traction Control",
+                "Hand-Adjustable Rear Suspension",
+                "Apple CarPlay Compatible",
+                "LED Lighting Throughout",
+                "Batwing Fairing with Windshield",
+                "Hard Saddlebags",
+                "Midnight Firestorm Ghost Flames",
+              ].map((f) => (
+                <div key={f} style={styles.featureItem}>
+                  <span style={styles.featureDot}>●</span>
+                  <span>{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* FINANCE BOX */}
+          <div style={styles.offerBox}>
+            <p style={styles.offerTitle}>💰 Special Finance Rate</p>
+            <p style={styles.offerText}>
+              This Street Glide is available on 3.99% Harley-Davidson Finance — making New Zealand's most iconic touring motorcycle more accessible than ever. Stock #23106. Contact Auckland Harley-Davidson for full terms and conditions.
+            </p>
+            <a href="https://aucklandharleydavidson.co.nz" target="_blank" rel="noopener noreferrer" style={styles.offerLink}>
+              Enquire about finance at Auckland H-D →
+            </a>
+          </div>
+
+          {/* LEAD CAPTURE */}
+          {!submitted ? (
+            <div style={styles.leadSection}>
+              {!showForm ? (
+                <div style={styles.leadButtons}>
+                  <h2 style={styles.leadTitle}>Interested in this Street Glide?</h2>
+                  <p style={styles.leadSub}>Speak with the team at Auckland Harley-Davidson about a test ride or finance options.</p>
+                  <button style={styles.leadBtn} onClick={() => setShowForm(true)} className="lead-btn">
+                    Request More Information →
                   </button>
-                </form>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={styles.thankYou}>
-            <div style={styles.thankYouIcon}>✓</div>
-            <h2 style={styles.thankYouTitle}>Thank You!</h2>
-            <p style={styles.thankYouText}>The Auckland Harley-Davidson team will be in touch within 24 hours.</p>
-            <img src="/ahd.png" alt="Auckland Harley Davidson" style={{ height: 40, margin: "24px auto 0", display: "block", opacity: 0.8 }} />
-          </div>
-        )}
+                  <button style={styles.testDriveBtn} onClick={() => setShowForm(true)} className="test-btn">
+                    Book a Test Ride
+                  </button>
+                </div>
+              ) : (
+                <div style={styles.formWrap}>
+                  <h2 style={styles.leadTitle}>Get in Touch</h2>
+                  <p style={styles.leadSub}>The Auckland Harley-Davidson team will contact you within 24 hours.</p>
+                  <div style={styles.form}>
+                    <div style={styles.fieldWrap}>
+                      <label style={styles.label}>Full Name *</label>
+                      <input style={styles.input} placeholder="e.g. John Smith" required
+                        value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        className="form-input" />
+                    </div>
+                    <div style={styles.grid2}>
+                      <div style={styles.fieldWrap}>
+                        <label style={styles.label}>Mobile *</label>
+                        <input style={styles.input} placeholder="021 234 5678" required
+                          value={formData.mobile} onChange={(e) => setFormData({...formData, mobile: e.target.value})}
+                          className="form-input" />
+                      </div>
+                      <div style={styles.fieldWrap}>
+                        <label style={styles.label}>Email *</label>
+                        <input style={styles.input} type="email" placeholder="john@email.com" required
+                          value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
+                          className="form-input" />
+                      </div>
+                    </div>
+                    <div style={styles.fieldWrap}>
+                      <label style={styles.label}>I'm interested in...</label>
+                      <select style={styles.input} value={formData.interest}
+                        onChange={(e) => setFormData({...formData, interest: e.target.value})}
+                        className="form-input">
+                        <option value="">Select an option</option>
+                        <option value="purchase">Purchasing this Street Glide</option>
+                        <option value="testride">Test ride</option>
+                        <option value="finance">3.99% finance options</option>
+                        <option value="tradeIn">Trade-in enquiry</option>
+                        <option value="info">General information</option>
+                      </select>
+                    </div>
+                    <button onClick={handleSubmit} style={styles.submitBtn} className="lead-btn">
+                      Send My Request →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={styles.thankYou}>
+              <div style={styles.thankYouIcon}>✓</div>
+              <h2 style={styles.thankYouTitle}>Thank You!</h2>
+              <p style={styles.thankYouText}>The Auckland Harley-Davidson team will be in touch within 24 hours.</p>
+              <img src="/ahd.png" alt="Auckland Harley Davidson" style={{ height: 40, margin: "24px auto 0", display: "block", opacity: 0.8 }} />
+            </div>
+          )}
 
-        {/* FOOTER */}
-        <div style={styles.footer}>
-          <div style={styles.footerDivider} />
-          <img src="/ahd.png" alt="Auckland Harley Davidson" style={{ height: 36, margin: "0 auto 16px", display: "block", opacity: 0.8 }} />
-          <p style={styles.footerAddress}>aucklandharleydavidson.co.nz</p>
-          <div style={styles.footerSeparator} />
-          <p style={styles.footerPowered}>Digital profile powered by</p>
-          <img src="/Mothers Logo Red.png" alt="Mothers Polish" style={styles.footerLogo} />
+          {/* FOOTER */}
+          <div style={styles.footer}>
+            <div style={styles.footerDivider} />
+            <img src="/ahd.png" alt="Auckland Harley Davidson" style={{ height: 36, margin: "0 auto 16px", display: "block", opacity: 0.8 }} />
+            <p style={styles.footerAddress}>aucklandharleydavidson.co.nz</p>
+            <div style={styles.footerSeparator} />
+            <p style={styles.footerPowered}>Digital profile powered by</p>
+            <img src="/Mothers Logo Red.png" alt="Mothers Polish" style={styles.footerLogo} />
+          </div>
+
         </div>
-
       </div>
-    </div>
     </div>
   );
 }
@@ -212,11 +213,9 @@ const styles = {
   pageOuter: { minHeight: "100vh", background: "#1a1a1a", padding: "16px", display: "flex", justifyContent: "center", alignItems: "flex-start" },
   page: { width: "100%", maxWidth: 820, background: "#0a0a0a", fontFamily: "'Georgia', serif", color: "#f0f0f0", borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 48px rgba(0,0,0,0.8)" },
 
-  // Dealer header
   dealerHeader: { background: "#111", borderBottom: "3px solid #FF6600", padding: "16px 24px", display: "flex", justifyContent: "center", alignItems: "center" },
   dealerLogo: { height: 48, width: "auto" },
 
-  // Hero
   hero: { position: "relative", height: "70vw", maxHeight: 580, minHeight: 280, overflow: "hidden", background: "#050505" },
   heroImg: { width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", display: "block", padding: "20px 0" },
   heroOverlay: { position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,0.85) 100%)" },
@@ -225,7 +224,6 @@ const styles = {
   heroTitle: { fontSize: "clamp(36px, 8vw, 72px)", fontWeight: 900, color: "#fff", margin: "0 0 8px", lineHeight: 1 },
   heroSub: { fontSize: 15, color: "#ccc", margin: 0 },
 
-  // Stats - orange Harley colour
   statsBar: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "#FF6600", padding: "20px 24px" },
   statItem: { textAlign: "center", borderRight: "1px solid rgba(255,255,255,0.2)" },
   statValue: { fontSize: "clamp(18px, 4vw, 30px)", fontWeight: 900, color: "#fff", margin: "0 0 4px" },
