@@ -1,7 +1,45 @@
 import { useState } from "react";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = "https://sfymjnjpqvgtoxofndzx.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeW1qbmpwcXZndG94b2ZuZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzI1MTAsImV4cCI6MjA3MzE0ODUxMH0.RqBItIZ-Iz_XhKcJNsJSR6e3n5jxW_YKHWGHO5j1z2c";
 
 export default function AstonDB12S() {
-  const [showSaveInfo, setShowSaveInfo] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [optIn, setOptIn] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSendEmail() {
+    if (!name || !email) { setError("Please enter your name and email."); return; }
+    setSending(true);
+    setError("");
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/send-sellsheet-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          optIn,
+          carName: "Aston Martin DB12 S",
+          carUrl: "https://mothers-showtime.vercel.app/aston-db12s",
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to send");
+      setSent(true);
+    } catch (e) {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  }
 
   const specs = [
     { label: "Power", value: "700 PS / 690 bhp" },
@@ -121,23 +159,70 @@ export default function AstonDB12S() {
             </a>
           </div>
 
-          {/* SAVE TO PHONE */}
+          {/* EMAIL CAPTURE */}
           <div style={styles.saveSection}>
-            <button style={styles.saveBtn} onClick={() => setShowSaveInfo(!showSaveInfo)} className="save-btn">
-              📱 Save This Page to Your Phone
-            </button>
-            {showSaveInfo && (
-              <div style={styles.saveInfo}>
-                <p style={styles.saveInfoTitle}>How to save:</p>
-                <p style={styles.saveInfoText}>
-                  <strong>iPhone (Safari):</strong> Tap the Share button ↑ at the bottom of your screen, then "Add to Home Screen"
+            {!showEmailForm && !sent && (
+              <button style={styles.saveBtn} onClick={() => setShowEmailForm(true)} className="save-btn">
+                📧 Email This Car to Yourself
+              </button>
+            )}
+
+            {showEmailForm && !sent && (
+              <div style={styles.emailForm}>
+                <p style={styles.emailTitle}>📧 Save This Car to Your Inbox</p>
+                <p style={styles.emailSub}>We'll send you the full details instantly — yours to keep, revisit, and share.</p>
+
+                <input
+                  style={styles.input}
+                  placeholder="Your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="form-input"
+                />
+                <input
+                  style={styles.input}
+                  placeholder="Your email address"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="form-input"
+                />
+
+                <div style={styles.optInRow}>
+                  <input
+                    type="checkbox"
+                    id="optin"
+                    checked={optIn}
+                    onChange={(e) => setOptIn(e.target.checked)}
+                    style={styles.checkbox}
+                  />
+                  <label htmlFor="optin" style={styles.optInLabel}>
+                    Keep me updated on new vehicles and offers
+                  </label>
+                </div>
+
+                {error && <p style={styles.errorText}>{error}</p>}
+
+                <button
+                  style={styles.sendBtn}
+                  onClick={handleSendEmail}
+                  disabled={sending}
+                  className="send-btn"
+                >
+                  {sending ? "Sending..." : "Send It to Me →"}
+                </button>
+
+                <p style={styles.privacyText}>
+                  Your privacy matters. One email, no spam. Unsubscribe anytime.
                 </p>
-                <p style={styles.saveInfoText}>
-                  <strong>Android (Chrome):</strong> Tap the menu ⋮ then "Add to Home Screen"
-                </p>
-                <p style={styles.saveInfoText}>
-                  The page will appear as an app icon on your phone — tap it anytime to come back.
-                </p>
+              </div>
+            )}
+
+            {sent && (
+              <div style={styles.successBox}>
+                <p style={styles.successIcon}>✓</p>
+                <p style={styles.successTitle}>On Its Way!</p>
+                <p style={styles.successText}>Check your inbox — the DB12 S details are headed to {email}</p>
               </div>
             )}
           </div>
@@ -166,11 +251,9 @@ export default function AstonDB12S() {
 const styles = {
   pageOuter: { minHeight: "100vh", background: "#0A2A6E", padding: "16px", display: "flex", justifyContent: "center", alignItems: "flex-start" },
   page: { width: "100%", maxWidth: 820, background: "#fff", fontFamily: "'Georgia', serif", color: "#111", borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 48px rgba(0,0,0,0.4)" },
-
   amHeader: { background: "#fff", borderBottom: "1px solid #e0e0e0", padding: "20px 24px", textAlign: "center" },
   amLogo: { height: 40, width: "auto", margin: "0 auto 8px", display: "block" },
   amDealer: { fontSize: 12, color: "#888", letterSpacing: 1, margin: 0 },
-
   hero: { position: "relative", height: "70vw", maxHeight: 520, minHeight: 260, overflow: "hidden", background: "#0A1628" },
   heroImg: { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 50%", display: "block" },
   heroOverlay: { position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,0.85) 100%)" },
@@ -178,43 +261,46 @@ const styles = {
   heroEyebrow: { fontSize: 11, letterSpacing: 3, color: "#D4AF37", margin: "0 0 8px", textTransform: "uppercase" },
   heroTitle: { fontSize: "clamp(40px, 9vw, 80px)", fontWeight: 900, color: "#fff", margin: "0 0 8px", lineHeight: 1, letterSpacing: 2 },
   heroSub: { fontSize: 14, color: "#ddd", margin: 0 },
-
   statsBar: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "#1B6157", padding: "20px 16px" },
   statItem: { textAlign: "center", borderRight: "1px solid rgba(255,255,255,0.2)" },
   statValue: { fontSize: "clamp(18px, 4vw, 30px)", fontWeight: 900, color: "#fff", margin: "0 0 4px" },
   statLabel: { fontSize: 10, color: "rgba(255,255,255,0.8)", letterSpacing: 2, textTransform: "uppercase", margin: 0 },
-
   content: { padding: "0 24px" },
   section: { padding: "32px 0", borderBottom: "1px solid #f0f0f0" },
   sectionTitle: { fontSize: 18, fontWeight: 700, color: "#1B6157", margin: "0 0 20px", letterSpacing: 1, textTransform: "uppercase" },
   bodyText: { fontSize: 15, lineHeight: 1.8, color: "#444", marginBottom: 16 },
-
   specsGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "#f0f0f0", border: "1px solid #f0f0f0", borderRadius: 8, overflow: "hidden" },
   specItem: { background: "#fff", padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" },
   specLabel: { fontSize: 12, color: "#888", margin: 0 },
   specValue: { fontSize: 14, fontWeight: 700, color: "#111", margin: 0, textAlign: "right" },
-
   featureGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   featureItem: { display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#444", lineHeight: 1.4 },
   featureDot: { color: "#1B6157", fontSize: 8, flexShrink: 0, marginTop: 4 },
-
   actionSection: { padding: "32px 0", display: "flex", flexDirection: "column", gap: 12 },
   primaryBtn: { display: "block", background: "#1B6157", color: "#fff", borderRadius: 8, padding: "18px 24px", fontSize: 16, fontWeight: 700, textAlign: "center", textDecoration: "none", fontFamily: "'Georgia', serif" },
   secondaryBtn: { display: "block", background: "transparent", color: "#1B6157", border: "2px solid #1B6157", borderRadius: 8, padding: "16px 24px", fontSize: 15, fontWeight: 700, textAlign: "center", textDecoration: "none", fontFamily: "'Georgia', serif" },
   ghostBtn: { display: "block", color: "#888", fontSize: 13, textAlign: "center", textDecoration: "none", padding: "8px 0" },
-
-  saveSection: { paddingBottom: 24 },
-  saveBtn: { width: "100%", background: "#FFD700", border: "2px solid #F0C000", borderRadius: 8, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif", color: "#111" },
-  saveInfo: { background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 8, padding: "16px", marginTop: 12 },
-  saveInfoTitle: { fontSize: 13, fontWeight: 700, color: "#1B6157", margin: "0 0 10px" },
-  saveInfoText: { fontSize: 13, color: "#666", lineHeight: 1.6, margin: "0 0 8px" },
-
+  saveSection: { paddingBottom: 32 },
+  saveBtn: { width: "100%", background: "#FFD700", border: "2px solid #F0C000", borderRadius: 8, padding: "18px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif", color: "#111" },
+  emailForm: { background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 12, padding: "24px" },
+  emailTitle: { fontSize: 18, fontWeight: 700, color: "#111", margin: "0 0 8px" },
+  emailSub: { fontSize: 14, color: "#666", lineHeight: 1.6, margin: "0 0 20px" },
+  input: { width: "100%", background: "#fff", border: "2px solid #ddd", borderRadius: 8, padding: "14px 16px", fontSize: 15, color: "#111", fontFamily: "'Georgia', serif", boxSizing: "border-box", marginBottom: 12, display: "block" },
+  optInRow: { display: "flex", alignItems: "flex-start", gap: 10, margin: "4px 0 16px" },
+  checkbox: { marginTop: 3, flexShrink: 0 },
+  optInLabel: { fontSize: 13, color: "#666", lineHeight: 1.5 },
+  sendBtn: { width: "100%", background: "#1B6157", color: "#fff", border: "none", borderRadius: 8, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif" },
+  privacyText: { fontSize: 11, color: "#aaa", textAlign: "center", margin: "12px 0 0" },
+  errorText: { fontSize: 13, color: "#cc0000", margin: "0 0 12px" },
+  successBox: { background: "#f0faf7", border: "2px solid #1B6157", borderRadius: 12, padding: "32px 24px", textAlign: "center" },
+  successIcon: { fontSize: 32, color: "#1B6157", margin: "0 0 8px" },
+  successTitle: { fontSize: 22, fontWeight: 700, color: "#1B6157", margin: "0 0 8px" },
+  successText: { fontSize: 14, color: "#666", lineHeight: 1.6, margin: 0 },
   dealerBox: { background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 10, padding: "24px", textAlign: "center", marginBottom: 24 },
   dealerLogoSmall: { height: 30, width: "auto", margin: "0 auto 12px", display: "block" },
   dealerName: { fontSize: 16, fontWeight: 700, color: "#111", margin: "0 0 6px" },
   dealerAddress: { fontSize: 13, color: "#888", margin: "0 0 10px" },
   dealerPhone: { fontSize: 15, fontWeight: 700, color: "#1B6157", textDecoration: "none", display: "block" },
-
   footer: { textAlign: "center", padding: "24px 0 40px" },
   footerDivider: { width: 40, height: 2, background: "#1B6157", margin: "0 auto 20px", borderRadius: 2 },
   footerPowered: { fontSize: 11, color: "#aaa", margin: "0 0 8px", letterSpacing: 1 },
@@ -225,7 +311,9 @@ const css = `
   .primary-btn:hover { background: #144d43 !important; }
   .secondary-btn:hover { background: #1B6157 !important; color: #fff !important; }
   .save-btn:hover { background: #F0C000 !important; }
+  .send-btn:hover { background: #144d43 !important; }
   .ghost-btn:hover { color: #1B6157 !important; }
+  .form-input:focus { border-color: #1B6157 !important; outline: none; }
   @media (max-width: 600px) {
     .specs-grid { grid-template-columns: 1fr !important; }
     .feature-grid { grid-template-columns: 1fr !important; }
