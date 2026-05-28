@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { useState, useEffect } from "react";
+
 
 const SUPABASE_URL = "https://sfymjnjpqvgtoxofndzx.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeW1qbmpwcXZndG94b2ZuZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzI1MTAsImV4cCI6MjA3MzE0ODUxMH0.RqBItIZ-Iz_XhKcJNsJSR6e3n5jxW_YKHWGHO5j1z2c";
@@ -12,9 +12,53 @@ export default function AstonDB12S() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [remembered, setRemembered] = useState(false);
+
+  // On load — check if we already know this person
+  useEffect(() => {
+    const savedName = localStorage.getItem("ms_name");
+    const savedEmail = localStorage.getItem("ms_email");
+    if (savedName && savedEmail) {
+      setName(savedName);
+      setEmail(savedEmail);
+      setRemembered(true);
+    }
+  }, []);
 
   async function handleSendEmail() {
     if (!name || !email) { setError("Please enter your name and email."); return; }
+    setSending(true);
+    setError("");
+    try {
+      // Save to localStorage for next car
+      localStorage.setItem("ms_name", name);
+      localStorage.setItem("ms_email", email);
+
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/send-sellsheet-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          optIn,
+          carName: "Aston Martin DB12 S",
+          carUrl: "https://mothers-showtime.vercel.app/aston-db12s",
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to send");
+      setSent(true);
+    } catch (e) {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  // One-tap send for returning visitors
+  async function handleQuickSend() {
     setSending(true);
     setError("");
     try {
@@ -27,7 +71,7 @@ export default function AstonDB12S() {
         body: JSON.stringify({
           name,
           email,
-          optIn,
+          optIn: false,
           carName: "Aston Martin DB12 S",
           carUrl: "https://mothers-showtime.vercel.app/aston-db12s",
         }),
@@ -161,10 +205,23 @@ export default function AstonDB12S() {
 
           {/* EMAIL CAPTURE */}
           <div style={styles.saveSection}>
-            {!showEmailForm && !sent && (
+            {!showEmailForm && !sent && !remembered && (
               <button style={styles.saveBtn} onClick={() => setShowEmailForm(true)} className="save-btn">
                 📧 Email This Car to Yourself
               </button>
+            )}
+
+            {!sent && remembered && (
+              <div style={styles.quickSendBox}>
+                <p style={styles.quickSendTitle}>📧 Send to {email}?</p>
+                <button style={styles.saveBtn} onClick={handleQuickSend} disabled={sending} className="save-btn">
+                  {sending ? "Sending..." : "Yes — Send It to Me →"}
+                </button>
+                <button onClick={() => { setRemembered(false); setShowEmailForm(true); }} style={styles.notMeBtn}>
+                  Not me — use a different email
+                </button>
+                {error && <p style={styles.errorText}>{error}</p>}
+              </div>
             )}
 
             {showEmailForm && !sent && (
@@ -282,6 +339,9 @@ const styles = {
   ghostBtn: { display: "block", color: "#888", fontSize: 13, textAlign: "center", textDecoration: "none", padding: "8px 0" },
   saveSection: { paddingBottom: 32 },
   saveBtn: { width: "100%", background: "#FFD700", border: "2px solid #F0C000", borderRadius: 8, padding: "18px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif", color: "#111" },
+  quickSendBox: { textAlign: "center" },
+  quickSendTitle: { fontSize: 16, fontWeight: 700, color: "#111", margin: "0 0 12px" },
+  notMeBtn: { display: "block", width: "100%", background: "transparent", border: "none", color: "#888", fontSize: 13, cursor: "pointer", padding: "12px 0", fontFamily: "'Georgia', serif" },
   emailForm: { background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 12, padding: "24px" },
   emailTitle: { fontSize: 18, fontWeight: 700, color: "#111", margin: "0 0 8px" },
   emailSub: { fontSize: 14, color: "#666", lineHeight: 1.6, margin: "0 0 20px" },
