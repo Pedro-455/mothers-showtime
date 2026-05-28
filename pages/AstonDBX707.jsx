@@ -168,7 +168,7 @@ export default function AstonDBX707() {
 }
 
 const styles = {
-  pageOuter: { minHeight: "100vh", background: "#f5f5f5", padding: "16px", display: "flex", justifyContent: "center", alignItems: "flex-start" },
+  pageOuter: { minHeight: "100vh", background: "#B8780A", padding: "16px", display: "flex", justifyContent: "center", alignItems: "flex-start" },
   page: { width: "100%", maxWidth: 820, background: "#fff", fontFamily: "'Georgia', serif", color: "#111", borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 48px rgba(0,0,0,0.15)" },
 
   // Aston Martin header - clean white with their branding
