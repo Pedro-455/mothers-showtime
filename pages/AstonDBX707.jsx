@@ -76,7 +76,7 @@ export default function AstonDBX707() {
           {/* SPECS */}
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>Key Details</h2>
-            <div style={styles.specsGrid}>
+            <div style={styles.specsGrid} className="specs-grid">
               {specs.map((spec) => (
                 <div key={spec.label} style={styles.specItem}>
                   <p style={styles.specLabel}>{spec.label}</p>
@@ -89,7 +89,7 @@ export default function AstonDBX707() {
           {/* FEATURES */}
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>Custom Features</h2>
-            <div style={styles.featureGrid}>
+            <div style={styles.featureGrid} className="feature-grid">
               {[
                 "Signature Metallic Paint — Golden Saffron",
                 "23\" Alloy Wheels in Textured Black",
@@ -168,7 +168,7 @@ export default function AstonDBX707() {
 }
 
 const styles = {
-  pageOuter: { minHeight: "100vh", background: "#B8780A", padding: "16px", display: "flex", justifyContent: "center", alignItems: "flex-start" },
+  pageOuter: { minHeight: "100vh", background: "#1B6157", padding: "16px", display: "flex", justifyContent: "center", alignItems: "flex-start" },
   page: { width: "100%", maxWidth: 820, background: "#fff", fontFamily: "'Georgia', serif", color: "#111", borderRadius: 12, overflow: "hidden", boxShadow: "0 8px 48px rgba(0,0,0,0.15)" },
 
   // Aston Martin header - clean white with their branding
@@ -216,7 +216,7 @@ const styles = {
 
   // Save to phone
   saveSection: { paddingBottom: 24 },
-  saveBtn: { width: "100%", background: "#f5f5f5", border: "2px solid #ddd", borderRadius: 8, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif", color: "#444" },
+  saveBtn: { width: "100%", background: "#FFD700", border: "2px solid #F0C000", borderRadius: 8, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif", color: "#111" },
   saveInfo: { background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 8, padding: "16px", marginTop: 12 },
   saveInfoTitle: { fontSize: 13, fontWeight: 700, color: "#1B6157", margin: "0 0 10px" },
   saveInfoText: { fontSize: 13, color: "#666", lineHeight: 1.6, margin: "0 0 8px" },
@@ -238,7 +238,7 @@ const styles = {
 const css = `
   .primary-btn:hover { background: #144d43 !important; }
   .secondary-btn:hover { background: #1B6157 !important; color: #fff !important; }
-  .save-btn:hover { border-color: #1B6157 !important; color: #1B6157 !important; }
+  .save-btn:hover { background: #F0C000 !important; }
   .ghost-btn:hover { color: #1B6157 !important; }
   @media (max-width: 600px) {
     .feature-grid { grid-template-columns: 1fr !important; }
