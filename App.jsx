@@ -5,6 +5,7 @@ import CorvetteDemo from "./pages/CorvettDemo.jsx";
 import CadillacDemo from "./pages/CadillacDemo.jsx";
 import YukonDemo from "./pages/YukonDemo.jsx";
 import HarleyDemo from "./pages/HarleyDemo.jsx";
+import AstonDBX707 from "./pages/AstonDBX707.jsx";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/cadillac-lyriq" element={<CadillacDemo />} />
         <Route path="/gmc-yukon" element={<YukonDemo />} />
         <Route path="/harley-street-glide" element={<HarleyDemo />} />
+        <Route path="/aston-dbx707" element={<AstonDBX707 />} />
         <Route
           path="*"
           element={
