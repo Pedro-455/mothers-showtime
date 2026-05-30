@@ -7,6 +7,7 @@ import YukonDemo from "./pages/YukonDemo.jsx";
 import HarleyDemo from "./pages/HarleyDemo.jsx";
 import AstonDBX707 from "./pages/AstonDBX707.jsx";
 import AstonDB12S from "./pages/AstonDB12S.jsx";
+import RayWhiteDemo from "./pages/RayWhiteDemo.jsx";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/harley-street-glide" element={<HarleyDemo />} />
         <Route path="/aston-dbx707" element={<AstonDBX707 />} />
         <Route path="/aston-db12s" element={<AstonDB12S />} />
+        <Route path="/ray-white-karaka" element={<RayWhiteDemo />} />
         <Route
           path="*"
           element={
