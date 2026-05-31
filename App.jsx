@@ -11,6 +11,8 @@ import RayWhiteDemo from "./pages/RayWhiteDemo.jsx";
 import RwHOW45015 from "./pages/RwHOW45015.jsx";
 import RwDMR31747 from "./pages/RwDMR31747.jsx";
 import RwHOW45506 from "./pages/RwHOW45506.jsx";
+import Portal from "./pages/Portal.jsx";
+import DynamicListing from "./pages/DynamicListing.jsx";
 
 export default function App() {
   return (
@@ -28,6 +30,9 @@ export default function App() {
         <Route path="/rw-HOW45015" element={<RwHOW45015 />} />
         <Route path="/rw-DMR31747" element={<RwDMR31747 />} />
         <Route path="/rw-HOW45506" element={<RwHOW45506 />} />
+        <Route path="/portal" element={<Portal />} />
+        <Route path="/portal/*" element={<Portal />} />
+        <Route path="/:slug" element={<DynamicListing />} />
         <Route
           path="*"
           element={
