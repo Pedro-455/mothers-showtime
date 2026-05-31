@@ -46,6 +46,21 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
   const brandColour = dealer?.brand_colour || '#1B6157';
   const headerTextColour = isRayWhite ? '#000000' : '#ffffff';
 
+  const AddButtons = () => (
+    <div style={styles.addButtons}>
+      {!isRayWhite && (
+        <button style={{ ...styles.addBtn, background: brandColour, color: headerTextColour }} onClick={onAddNew}>
+          🚗 Add Vehicle
+        </button>
+      )}
+      {onAddProperty && (
+        <button style={{ ...styles.addBtn, background: isRayWhite ? '#111' : brandColour, color: isRayWhite ? '#FFCD00' : '#fff' }} onClick={onAddProperty}>
+          🏡 Add Property
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div style={styles.outer}>
       <div style={styles.page}>
@@ -87,16 +102,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
         <div style={styles.content}>
           <div style={styles.contentHeader}>
             <h2 style={styles.contentTitle}>Your Listings</h2>
-            <div style={styles.addButtons}>
-              <button style={{ ...styles.addBtn, background: brandColour, color: headerTextColour }} onClick={onAddNew}>
-                🚗 Add Vehicle
-              </button>
-              {onAddProperty && (
-                <button style={{ ...styles.addBtn, background: isRayWhite ? '#111' : brandColour, color: isRayWhite ? '#FFCD00' : '#fff' }} onClick={onAddProperty}>
-                  🏡 Add Property
-                </button>
-              )}
-            </div>
+            <AddButtons />
           </div>
 
           {loading && <p style={styles.loadingText}>Loading your listings...</p>}
@@ -106,16 +112,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
               <p style={styles.emptyIcon}>{isRayWhite ? '🏡' : '🏍️'}</p>
               <p style={styles.emptyTitle}>No listings yet</p>
               <p style={styles.emptySub}>Add your first {isRayWhite ? 'property' : 'vehicle'} to get started</p>
-              <div style={styles.addButtons}>
-                <button style={{ ...styles.addBtn, background: brandColour, color: headerTextColour }} onClick={onAddNew}>
-                  🚗 Add Vehicle
-                </button>
-                {onAddProperty && (
-                  <button style={{ ...styles.addBtn, background: isRayWhite ? '#111' : brandColour, color: isRayWhite ? '#FFCD00' : '#fff' }} onClick={onAddProperty}>
-                    🏡 Add Property
-                  </button>
-                )}
-              </div>
+              <AddButtons />
             </div>
           )}
 
