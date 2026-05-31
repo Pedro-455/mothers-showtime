@@ -46,7 +46,12 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
         const path = `${slug}.${ext}`;
         const uploadRes = await fetch(`${LINQR_URL}/storage/v1/object/vehicle-images/${path}`, {
           method: 'PUT',
-          headers: { 'apikey': LINQR_KEY, 'Authorization': `Bearer ${LINQR_KEY}`, 'x-upsert': 'true', 'Content-Type': imageFile.type },
+          headers: {
+            'apikey': LINQR_KEY,
+            'Authorization': `Bearer ${LINQR_KEY}`,
+            'x-upsert': 'true',
+            'Content-Type': imageFile.type
+          },
           body: imageFile
         });
         if (!uploadRes.ok) throw new Error('Image upload failed');
@@ -56,6 +61,15 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
       const listing = {
         dealer_id: dealer.id,
         slug,
+        listing_type: 'property',
+        published: publishStatus === 'published',
+        image_url: imageUrl,
+        price,
+        description,
+        features,
+        make: address,
+        model: suburb || '',
+        stock_number: propertyId.toUpperCase(),
         property_id: propertyId.toUpperCase(),
         address,
         suburb,
@@ -65,35 +79,41 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
         floor_area: floorArea,
         land_area: landArea,
         sale_method: saleMethod,
-        price,
         cv,
-        description,
-        features,
         agent_name: agentName,
         agent_phone: agentPhone,
-        image_url: imageUrl,
-        status: publishStatus,
-        listing_type: 'property',
-        make: address,
-        model: suburb,
-        stock_number: propertyId.toUpperCase(),
-        published: publishStatus === 'published',
       };
 
       if (editListing) {
         const res = await fetch(`${LINQR_URL}/rest/v1/listings?id=eq.${editListing.id}`, {
           method: 'PATCH',
-          headers: { 'apikey': LINQR_KEY, 'Authorization': `Bearer ${LINQR_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          headers: {
+            'apikey': LINQR_KEY,
+            'Authorization': `Bearer ${LINQR_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
           body: JSON.stringify(listing)
         });
-        if (!res.ok) throw new Error('Update failed');
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.message || errBody.details || errBody.hint || `Update failed (${res.status})`);
+        }
       } else {
         const res = await fetch(`${LINQR_URL}/rest/v1/listings`, {
           method: 'POST',
-          headers: { 'apikey': LINQR_KEY, 'Authorization': `Bearer ${LINQR_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          headers: {
+            'apikey': LINQR_KEY,
+            'Authorization': `Bearer ${LINQR_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
           body: JSON.stringify(listing)
         });
-        if (!res.ok) throw new Error('Insert failed');
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.message || errBody.details || errBody.hint || `Insert failed (${res.status})`);
+        }
       }
 
       if (publishStatus === 'published') {
@@ -118,7 +138,6 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f0', fontFamily: 'Georgia, serif' }}>
-      {/* Header */}
       <div style={{ background: '#FFCD00', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button onClick={onBack} style={{ background: 'rgba(0,0,0,0.1)', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}>← Back</button>
@@ -141,7 +160,6 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         )}
 
-        {/* Property ID */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Property Reference</h3>
           <div>
@@ -151,7 +169,6 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         </div>
 
-        {/* Address */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Property Address</h3>
           <div style={{ display: 'grid', gap: '14px' }}>
@@ -166,7 +183,6 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         </div>
 
-        {/* Property Details */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Property Details</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '14px' }}>
@@ -195,7 +211,6 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         </div>
 
-        {/* Pricing */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Price & Sale Method</h3>
           <div style={{ display: 'grid', gap: '14px' }}>
@@ -223,7 +238,6 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         </div>
 
-        {/* Description */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Description & Features</h3>
           <div style={{ display: 'grid', gap: '14px' }}>
@@ -238,7 +252,6 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         </div>
 
-        {/* Agent */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Agent Details</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -253,7 +266,6 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         </div>
 
-        {/* Photo */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Property Photo</h3>
           <input type="file" accept="image/*" onChange={handleImage} style={{ marginBottom: '12px' }} />
@@ -262,7 +274,6 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           )}
         </div>
 
-        {/* Buttons */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '40px' }}>
           <button
             onClick={() => handleSave('draft')}
