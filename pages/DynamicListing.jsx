@@ -8,6 +8,184 @@ const LINQR_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 const OLD_SUPABASE_URL = "https://sfymjnjpqvgtoxofndzx.supabase.co";
 const OLD_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeW1qbmpwcXZndG94b2ZuZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzI1MTAsImV4cCI6MjA3MzE0ODUxMH0.RqBItIZ-Iz_XhKcJNsJSR6e3n5jxW_YKHWGHO5j1z2c";
 
+// ─── PROPERTY LISTING VIEW ────────────────────────────────────────────────────
+function PropertyListing({ listing, dealer, slug }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [remembered, setRemembered] = useState(false);
+
+  useEffect(() => {
+    const n = localStorage.getItem("ms_name");
+    const e = localStorage.getItem("ms_email");
+    if (n && e) { setName(n); setEmail(e); setRemembered(true); }
+  }, []);
+
+  const brandColour = dealer?.brand_colour || "#FFCD00";
+  const isRayWhite = brandColour === "#FFCD00";
+  const textOnBrand = isRayWhite ? "#000000" : "#ffffff";
+
+  const features = listing.features
+    ? (typeof listing.features === "string" ? listing.features.split("\n").filter(f => f.trim()) : listing.features)
+    : [];
+
+  async function handleSend() {
+    setSending(true);
+    localStorage.setItem("ms_name", name);
+    localStorage.setItem("ms_email", email);
+    try {
+      await fetch(`${OLD_SUPABASE_URL}/functions/v1/send-sellsheet-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OLD_ANON_KEY}` },
+        body: JSON.stringify({
+          name, email,
+          car_name: `${listing.address}${listing.suburb ? ", " + listing.suburb : ""}`,
+          car_url: `https://linqr.global/${slug}`,
+          opt_in: true,
+          source: "property-portal"
+        })
+      });
+      setSent(true);
+    } catch (e) { console.error(e); }
+    setSending(false);
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f5f5f0", fontFamily: "Georgia, serif" }}>
+
+      {/* RAY WHITE HEADER */}
+      <div style={{ background: brandColour }}>
+        <div style={{ maxWidth: 680, margin: "0 auto", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: 22, color: textOnBrand, letterSpacing: 1 }}>RAY WHITE</div>
+            <div style={{ fontSize: 13, color: isRayWhite ? "#333" : "rgba(255,255,255,0.8)" }}>{dealer?.name || "Real Estate"}</div>
+          </div>
+          <div style={{ fontSize: 11, color: isRayWhite ? "#555" : "rgba(255,255,255,0.7)", textAlign: "right" }}>
+            <div>PROPERTY PROFILE</div>
+            <div style={{ fontWeight: "bold" }}>{listing.property_id}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* HERO IMAGE */}
+      {listing.image_url && (
+        <div style={{ maxWidth: 680, margin: "0 auto" }}>
+          <img src={listing.image_url} alt={listing.address} style={{ width: "100%", maxHeight: 380, objectFit: "cover", display: "block" }} />
+        </div>
+      )}
+
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 16px 40px" }}>
+
+        {/* ADDRESS & PRICE */}
+        <div style={{ background: "white", borderRadius: "0 0 12px 12px", padding: 20, marginBottom: 16, borderTop: `4px solid ${brandColour}` }}>
+          <div style={{ fontSize: 22, fontWeight: "bold", color: "#111", marginBottom: 4 }}>{listing.address}</div>
+          {listing.suburb && <div style={{ fontSize: 16, color: "#555", marginBottom: 16 }}>{listing.suburb}</div>}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            {listing.price && (
+              <div style={{ background: brandColour, color: textOnBrand, padding: "8px 16px", borderRadius: 6, fontWeight: "bold", fontSize: 18 }}>
+                {listing.sale_method && listing.sale_method !== "Price" ? `${listing.sale_method}: ` : ""}{listing.price}
+              </div>
+            )}
+            {listing.cv && <div style={{ fontSize: 14, color: "#666" }}>CV: {listing.cv}</div>}
+          </div>
+        </div>
+
+        {/* STATS BAR */}
+        <div style={{ background: "#111", borderRadius: 10, padding: 16, marginBottom: 16, display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, textAlign: "center" }}>
+          {[
+            { label: "Bed", value: listing.bedrooms || "—" },
+            { label: "Bath", value: listing.bathrooms || "—" },
+            { label: "Garage", value: listing.garages || "—" },
+            { label: "Floor", value: listing.floor_area ? `${listing.floor_area}m²` : "—" },
+            { label: "Land", value: listing.land_area ? `${listing.land_area}m²` : "—" },
+          ].map(s => (
+            <div key={s.label}>
+              <div style={{ color: brandColour, fontWeight: "bold", fontSize: 18 }}>{s.value}</div>
+              <div style={{ color: "#aaa", fontSize: 11 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* DESCRIPTION */}
+        {listing.description && (
+          <div style={{ background: "white", borderRadius: 10, padding: 20, marginBottom: 16 }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#111", borderBottom: `2px solid ${brandColour}`, paddingBottom: 8 }}>About This Property</h3>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: "#333" }}>{listing.description}</p>
+          </div>
+        )}
+
+        {/* FEATURES */}
+        {features.length > 0 && (
+          <div style={{ background: "white", borderRadius: 10, padding: 20, marginBottom: 16 }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#111", borderBottom: `2px solid ${brandColour}`, paddingBottom: 8 }}>Key Features</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {features.map((f, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "#333" }}>
+                  <span style={{ color: brandColour, fontWeight: "bold" }}>✓</span> {f}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* AGENT */}
+        {(listing.agent_name || listing.agent_phone) && (
+          <div style={{ background: "white", borderRadius: 10, padding: 20, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: 12, color: "#888", marginBottom: 2 }}>YOUR AGENT</div>
+              <div style={{ fontWeight: "bold", fontSize: 16, color: "#111" }}>{listing.agent_name}</div>
+              {listing.agent_phone && <div style={{ fontSize: 14, color: "#555" }}>{listing.agent_phone}</div>}
+            </div>
+            {listing.agent_phone && (
+              <a href={`tel:${listing.agent_phone}`} style={{ background: brandColour, color: textOnBrand, padding: "10px 18px", borderRadius: 8, textDecoration: "none", fontWeight: "bold", fontSize: 14 }}>📞 Call</a>
+            )}
+          </div>
+        )}
+
+        {/* EMAIL CAPTURE */}
+        <div style={{ background: "white", borderRadius: 10, padding: 20, marginBottom: 16, border: `2px solid ${brandColour}` }}>
+          <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#111" }}>📋 Request More Information</h3>
+          <p style={{ margin: "0 0 16px", fontSize: 13, color: "#666" }}>Send yourself this property profile</p>
+          {sent ? (
+            <div style={{ textAlign: "center", padding: 20, color: "#1B6157", fontWeight: "bold" }}>✅ Sent! Check your inbox.</div>
+          ) : (
+            <>
+              {remembered && (
+                <div style={{ fontSize: 13, color: "#666", marginBottom: 10 }}>
+                  Sending as <strong>{name}</strong> ·{" "}
+                  <button onClick={() => { setRemembered(false); setName(""); setEmail(""); localStorage.removeItem("ms_name"); localStorage.removeItem("ms_email"); }}
+                    style={{ background: "none", border: "none", color: "#c00", cursor: "pointer", fontSize: 13 }}>Not me</button>
+                </div>
+              )}
+              {!remembered && (
+                <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+                  <input style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 6, fontSize: 14, boxSizing: "border-box", fontFamily: "Georgia, serif" }}
+                    value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
+                  <input style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 6, fontSize: 14, boxSizing: "border-box", fontFamily: "Georgia, serif" }}
+                    value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" type="email" />
+                </div>
+              )}
+              <button onClick={handleSend} disabled={sending || !name || !email}
+                style={{ width: "100%", padding: 12, background: "#111", color: brandColour, border: "none", borderRadius: 8, fontSize: 15, fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif" }}>
+                {sending ? "Sending..." : "✉️ Send Me This Property"}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* FOOTER */}
+        <div style={{ textAlign: "center", fontSize: 12, color: "#999", marginTop: 20 }}>
+          <img src="/LINQR-logo.png" alt="LINQR" style={{ height: 28, marginBottom: 6, opacity: 0.6 }} />
+          <div>© LINQR™ 2026 · linqr.global</div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN DYNAMIC LISTING ─────────────────────────────────────────────────────
 export default function DynamicListing() {
   const { slug } = useParams();
   const [listing, setListing] = useState(null);
@@ -88,11 +266,17 @@ export default function DynamicListing() {
       <div style={{ textAlign: "center" }}>
         <p style={{ fontSize: 48 }}>🔍</p>
         <p style={{ fontSize: 20, fontWeight: 700, fontFamily: "Georgia, serif", color: "#111" }}>Listing not found</p>
-        <p style={{ color: "#888" }}>This vehicle may no longer be available.</p>
+        <p style={{ color: "#888" }}>This listing may no longer be available.</p>
       </div>
     </div>
   );
 
+  // ── ROUTE TO PROPERTY VIEW IF NEEDED ────────────────────────────────────────
+  if (listing?.listing_type === "property") {
+    return <PropertyListing listing={listing} dealer={dealer} slug={slug} />;
+  }
+
+  // ── VEHICLE VIEW (original) ──────────────────────────────────────────────────
   const brandColour = dealer?.brand_colour || "#1B6157";
   const specs = [
     { label: "Make", value: listing.make },
@@ -133,7 +317,7 @@ export default function DynamicListing() {
           {listing.image_url
             ? <img src={listing.image_url} alt={`${listing.year} ${listing.make} ${listing.model}`} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }} />
             : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#222" }}>
-                <p style={{ color: "#666", fontSize: 48 }}>🏍️</p>
+                <p style={{ color: "#666", fontSize: 48 }}>🚗</p>
               </div>
           }
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,0.85) 100%)" }} />
@@ -198,7 +382,7 @@ export default function DynamicListing() {
 
           {/* FINANCE */}
           {listing.finance && (
-            <div style={{ margin: "24px 0", background: "#f9f9f9", border: `1px solid #e0e0e0`, borderRadius: 12, padding: 24 }}>
+            <div style={{ margin: "24px 0", background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 12, padding: 24 }}>
               <p style={{ fontSize: 16, fontWeight: 700, color: brandColour, margin: "0 0 8px" }}>💰 Finance Available</p>
               <p style={{ fontSize: 14, color: "#666", lineHeight: 1.7, margin: 0 }}>{listing.finance}</p>
             </div>
