@@ -8,16 +8,18 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
   const [suburb, setSuburb] = useState(editListing?.suburb || '');
   const [bedrooms, setBedrooms] = useState(editListing?.bedrooms || '');
   const [bathrooms, setBathrooms] = useState(editListing?.bathrooms || '');
-  const [garages, setGarages] = useState(editListing?.garages || '');
+  const [carSpaces, setCarSpaces] = useState(editListing?.garages || '');
   const [floorArea, setFloorArea] = useState(editListing?.floor_area || '');
   const [landArea, setLandArea] = useState(editListing?.land_area || '');
-  const [saleMethod, setSaleMethod] = useState(editListing?.sale_method || 'Price');
+  const [saleMethod, setSaleMethod] = useState(editListing?.sale_method || '');
   const [price, setPrice] = useState(editListing?.price || '');
   const [cv, setCv] = useState(editListing?.cv || '');
   const [description, setDescription] = useState(editListing?.description || '');
   const [features, setFeatures] = useState(editListing?.features || '');
-  const [agentName, setAgentName] = useState(editListing?.agent_name || '');
-  const [agentPhone, setAgentPhone] = useState(editListing?.agent_phone || '');
+  const [agent1Name, setAgent1Name] = useState(editListing?.agent_name || '');
+  const [agent1Phone, setAgent1Phone] = useState(editListing?.agent_phone || '');
+  const [agent2Name, setAgent2Name] = useState(editListing?.agent2_name || '');
+  const [agent2Phone, setAgent2Phone] = useState(editListing?.agent2_phone || '');
   const [propertyId, setPropertyId] = useState(editListing?.property_id || '');
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(editListing?.image_url || null);
@@ -64,7 +66,7 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
         listing_type: 'property',
         published: publishStatus === 'published',
         image_url: imageUrl,
-        price,
+        price: price || null,
         description,
         features,
         make: address,
@@ -75,13 +77,15 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
         suburb,
         bedrooms: bedrooms ? parseInt(bedrooms) : null,
         bathrooms: bathrooms ? parseInt(bathrooms) : null,
-        garages: garages ? parseInt(garages) : null,
+        garages: carSpaces ? parseInt(carSpaces) : null,
         floor_area: floorArea,
         land_area: landArea,
-        sale_method: saleMethod,
-        cv,
-        agent_name: agentName,
-        agent_phone: agentPhone,
+        sale_method: saleMethod || null,
+        cv: cv || null,
+        agent_name: agent1Name,
+        agent_phone: agent1Phone,
+        agent2_name: agent2Name || null,
+        agent2_phone: agent2Phone || null,
       };
 
       if (editListing) {
@@ -97,7 +101,7 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
         });
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
-          throw new Error(errBody.message || errBody.details || errBody.hint || `Update failed (${res.status})`);
+          throw new Error(errBody.message || errBody.details || `Update failed (${res.status})`);
         }
       } else {
         const res = await fetch(`${LINQR_URL}/rest/v1/listings`, {
@@ -112,12 +116,12 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
         });
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
-          throw new Error(errBody.message || errBody.details || errBody.hint || `Insert failed (${res.status})`);
+          throw new Error(errBody.message || errBody.details || `Insert failed (${res.status})`);
         }
       }
 
       if (publishStatus === 'published') {
-        onSuccess({ slug, address, suburb, propertyId: propertyId.toUpperCase(), dealer });
+        onSuccess({ slug, address, suburb, propertyId: propertyId.toUpperCase(), dealer, listing_type: 'property' });
       } else {
         onBack();
       }
@@ -160,15 +164,17 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         )}
 
+        {/* Property ID */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Property Reference</h3>
           <div>
             <label style={labelStyle}>Property ID * <span style={{ fontWeight: 'normal', color: '#666' }}>(e.g. HOW45015 — from your listing system)</span></label>
             <input style={inputStyle} value={propertyId} onChange={e => setPropertyId(e.target.value)} placeholder="HOW45015" />
-            {propertyId && <div style={{ marginTop: '6px', fontSize: '12px', color: '#666' }}>Live URL: linqr.global/rwh-{propertyId.toLowerCase()}</div>}
+            {propertyId && <div style={{ marginTop: '6px', fontSize: '12px', color: '#666' }}>Live URL: linqr.global/{dealer.code.toLowerCase()}-{propertyId.toLowerCase()}</div>}
           </div>
         </div>
 
+        {/* Address */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Property Address</h3>
           <div style={{ display: 'grid', gap: '14px' }}>
@@ -183,6 +189,7 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         </div>
 
+        {/* Property Details */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Property Details</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '14px' }}>
@@ -195,8 +202,8 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
               <input style={inputStyle} type="number" value={bathrooms} onChange={e => setBathrooms(e.target.value)} placeholder="2" />
             </div>
             <div>
-              <label style={labelStyle}>Garages</label>
-              <input style={inputStyle} type="number" value={garages} onChange={e => setGarages(e.target.value)} placeholder="2" />
+              <label style={labelStyle}>Car Spaces</label>
+              <input style={inputStyle} type="number" value={carSpaces} onChange={e => setCarSpaces(e.target.value)} placeholder="2" />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -211,12 +218,14 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         </div>
 
+        {/* Pricing */}
         <div style={sectionStyle}>
-          <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Price & Sale Method</h3>
+          <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Price & Sale Method <span style={{ fontWeight: 'normal', fontSize: '12px', color: '#888' }}>(only shown on sell sheet if filled in)</span></h3>
           <div style={{ display: 'grid', gap: '14px' }}>
             <div>
-              <label style={labelStyle}>Sale Method</label>
+              <label style={labelStyle}>Sale Method <span style={{ fontWeight: 'normal', color: '#888' }}>(optional)</span></label>
               <select style={inputStyle} value={saleMethod} onChange={e => setSaleMethod(e.target.value)}>
+                <option value="">— Not specified —</option>
                 <option>Price</option>
                 <option>Deadline Sale</option>
                 <option>Auction</option>
@@ -227,17 +236,18 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
-                <label style={labelStyle}>Asking Price / Guide</label>
+                <label style={labelStyle}>Asking Price / Guide <span style={{ fontWeight: 'normal', color: '#888' }}>(optional)</span></label>
                 <input style={inputStyle} value={price} onChange={e => setPrice(e.target.value)} placeholder="$1,850,000" />
               </div>
               <div>
-                <label style={labelStyle}>CV (Rateable Value)</label>
+                <label style={labelStyle}>CV (Rateable Value) <span style={{ fontWeight: 'normal', color: '#888' }}>(optional)</span></label>
                 <input style={inputStyle} value={cv} onChange={e => setCv(e.target.value)} placeholder="$1,650,000" />
               </div>
             </div>
           </div>
         </div>
 
+        {/* Description */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Description & Features</h3>
           <div style={{ display: 'grid', gap: '14px' }}>
@@ -252,20 +262,42 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           </div>
         </div>
 
+        {/* Agents */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Agent Details</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div style={{ display: 'grid', gap: '16px' }}>
+            {/* Agent 1 */}
             <div>
-              <label style={labelStyle}>Agent Name</label>
-              <input style={inputStyle} value={agentName} onChange={e => setAgentName(e.target.value)} placeholder="Sarah Thompson" />
+              <div style={{ fontSize: '12px', color: '#888', fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Agent 1</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={labelStyle}>Name</label>
+                  <input style={inputStyle} value={agent1Name} onChange={e => setAgent1Name(e.target.value)} placeholder="Sarah Thompson" />
+                </div>
+                <div>
+                  <label style={labelStyle}>Phone</label>
+                  <input style={inputStyle} value={agent1Phone} onChange={e => setAgent1Phone(e.target.value)} placeholder="+64 21 123 456" />
+                </div>
+              </div>
             </div>
-            <div>
-              <label style={labelStyle}>Agent Phone</label>
-              <input style={inputStyle} value={agentPhone} onChange={e => setAgentPhone(e.target.value)} placeholder="+64 21 123 456" />
+            {/* Agent 2 */}
+            <div style={{ borderTop: '1px solid #eee', paddingTop: '16px' }}>
+              <div style={{ fontSize: '12px', color: '#888', fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Agent 2 <span style={{ fontWeight: 'normal', color: '#bbb' }}>(optional)</span></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={labelStyle}>Name</label>
+                  <input style={inputStyle} value={agent2Name} onChange={e => setAgent2Name(e.target.value)} placeholder="James Wilson" />
+                </div>
+                <div>
+                  <label style={labelStyle}>Phone</label>
+                  <input style={inputStyle} value={agent2Phone} onChange={e => setAgent2Phone(e.target.value)} placeholder="+64 21 789 012" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Photo */}
         <div style={sectionStyle}>
           <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Property Photo</h3>
           <input type="file" accept="image/*" onChange={handleImage} style={{ marginBottom: '12px' }} />
@@ -274,19 +306,14 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
           )}
         </div>
 
+        {/* Buttons */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '40px' }}>
-          <button
-            onClick={() => handleSave('draft')}
-            disabled={saving}
-            style={{ padding: '14px', background: 'white', border: '2px solid #FFCD00', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', fontFamily: 'Georgia, serif' }}
-          >
+          <button onClick={() => handleSave('draft')} disabled={saving}
+            style={{ padding: '14px', background: 'white', border: '2px solid #FFCD00', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
             {saving ? 'Saving...' : '💾 Save as Draft'}
           </button>
-          <button
-            onClick={() => handleSave('published')}
-            disabled={saving}
-            style={{ padding: '14px', background: '#FFCD00', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', fontFamily: 'Georgia, serif' }}
-          >
+          <button onClick={() => handleSave('published')} disabled={saving}
+            style={{ padding: '14px', background: '#FFCD00', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
             {saving ? 'Publishing...' : '🏡 Publish — Go Live!'}
           </button>
         </div>
