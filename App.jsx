@@ -8,6 +8,9 @@ import HarleyDemo from "./pages/HarleyDemo.jsx";
 import AstonDBX707 from "./pages/AstonDBX707.jsx";
 import AstonDB12S from "./pages/AstonDB12S.jsx";
 import RayWhiteDemo from "./pages/RayWhiteDemo.jsx";
+import RwHOW45015 from "./pages/RwHOW45015.jsx";
+import RwDMR31747 from "./pages/RwDMR31747.jsx";
+import RwHOW45506 from "./pages/RwHOW45506.jsx";
 
 export default function App() {
   return (
@@ -22,6 +25,9 @@ export default function App() {
         <Route path="/aston-dbx707" element={<AstonDBX707 />} />
         <Route path="/aston-db12s" element={<AstonDB12S />} />
         <Route path="/ray-white-karaka" element={<RayWhiteDemo />} />
+        <Route path="/rw-HOW45015" element={<RwHOW45015 />} />
+        <Route path="/rw-DMR31747" element={<RwDMR31747 />} />
+        <Route path="/rw-HOW45506" element={<RwHOW45506 />} />
         <Route
           path="*"
           element={
