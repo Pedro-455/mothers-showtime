@@ -40,6 +40,7 @@ export default function Portal() {
   function handleLogin(d) { setDealer(d); setView("dashboard"); }
   function handleLogout() { localStorage.removeItem("linqr_dealer"); setDealer(null); }
   function handleAddNew() { setEditListing(null); setView("add"); }
+  function handleAddProperty() { setEditListing(null); setView("add-property"); }
   function handleEdit(listing) { setEditListing(listing); setView("add"); }
   function handleSuccess(listing, published) { setSuccessListing({ ...listing, published }); setView("success"); }
 
@@ -51,6 +52,15 @@ export default function Portal() {
 
   if (view === "add") return (
     <PortalAddVehicle
+      dealer={dealer}
+      onBack={() => setView("dashboard")}
+      onSuccess={handleSuccess}
+      editListing={editListing}
+    />
+  );
+
+  if (view === "add-property") return (
+    <PortalAddProperty
       dealer={dealer}
       onBack={() => setView("dashboard")}
       onSuccess={handleSuccess}
@@ -152,6 +162,7 @@ export default function Portal() {
       dealer={dealer}
       onLogout={handleLogout}
       onAddNew={handleAddNew}
+      onAddProperty={handleAddProperty}
       onEdit={handleEdit}
     />
   );
