@@ -5,28 +5,22 @@ const LINQR_SUPABASE_URL = "https://odnjkxgsgevuvjutqdmi.supabase.co";
 const LINQR_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kbmpreGdzZ2V2dXZqdXRxZG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxOTY0NzksImV4cCI6MjA5NTc3MjQ3OX0.tuf7P4I1xTNUMqnNLBkxAfVi-Ny4vjlWQzIX3AgTFoE";
 
 export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListing }) {
-  const [form, setForm] = useState({
-    stock_number: editListing?.stock_number || "",
-    make: editListing?.make || "",
-    model: editListing?.model || "",
-    year: editListing?.year || "",
-    colour: editListing?.colour || "",
-    engine: editListing?.engine || "",
-    transmission: editListing?.transmission || "",
-    odometer: editListing?.odometer || "",
-    price: editListing?.price || "",
-    finance: editListing?.finance || "",
-    description: editListing?.description || "",
-    features: editListing?.features?.join("\n") || "",
-  });
+  const [stockNumber, setStockNumber] = useState(editListing?.stock_number || "");
+  const [make, setMake] = useState(editListing?.make || "");
+  const [model, setModel] = useState(editListing?.model || "");
+  const [year, setYear] = useState(editListing?.year || "");
+  const [colour, setColour] = useState(editListing?.colour || "");
+  const [engine, setEngine] = useState(editListing?.engine || "");
+  const [transmission, setTransmission] = useState(editListing?.transmission || "");
+  const [odometer, setOdometer] = useState(editListing?.odometer || "");
+  const [price, setPrice] = useState(editListing?.price || "");
+  const [finance, setFinance] = useState(editListing?.finance || "");
+  const [description, setDescription] = useState(editListing?.description || "");
+  const [features, setFeatures] = useState(editListing?.features?.join("\n") || "");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(editListing?.image_url || null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  function handleChange(field, value) {
-    setForm(prev => ({ ...prev, [field]: value }));
-  }
 
   function handleImageChange(e) {
     const file = e.target.files[0];
@@ -52,36 +46,24 @@ export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListin
   }
 
   async function handleSave(publish) {
-    if (!form.stock_number || !form.make || !form.model || !form.year) {
+    if (!stockNumber || !make || !model || !year) {
       setError("Please fill in Stock Number, Make, Model and Year.");
       return;
     }
     setSaving(true);
     setError("");
     try {
-      const slug = `${dealer.code.toLowerCase()}-${form.stock_number}`;
+      const slug = `${dealer.code.toLowerCase()}-${stockNumber}`;
       let imageUrl = editListing?.image_url || null;
+      if (imageFile) imageUrl = await uploadImage(imageFile, slug);
 
-      if (imageFile) {
-        imageUrl = await uploadImage(imageFile, slug);
-      }
-
-      const featuresArray = form.features.split("\n").map(f => f.trim()).filter(Boolean);
+      const featuresArray = features.split("\n").map(f => f.trim()).filter(Boolean);
 
       const payload = {
         dealer_id: dealer.id,
-        stock_number: form.stock_number,
+        stock_number: stockNumber,
         slug,
-        make: form.make,
-        model: form.model,
-        year: form.year,
-        colour: form.colour,
-        engine: form.engine,
-        transmission: form.transmission,
-        odometer: form.odometer,
-        price: form.price,
-        finance: form.finance,
-        description: form.description,
+        make, model, year, colour, engine, transmission, odometer, price, finance, description,
         features: featuresArray,
         image_url: imageUrl,
         published: publish,
@@ -112,124 +94,137 @@ export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListin
     }
   }
 
-  const F = ({ label, field, placeholder, type = "text" }) => (
-    <div style={styles.fieldWrap}>
-      <label style={styles.label}>{label}</label>
-      <input
-        style={styles.input}
-        type={type}
-        placeholder={placeholder}
-        value={form[field]}
-        onChange={(e) => handleChange(field, e.target.value)}
-      />
-    </div>
-  );
-
   return (
-    <div style={styles.outer}>
-      <div style={styles.page}>
-        <div style={styles.header}>
-          <img src="/LINQR-logo.png" alt="LINQR" style={styles.logo} />
-          <p style={styles.dealerName}>{dealer.name}</p>
+    <div style={s.outer}>
+      <div style={s.page}>
+        <div style={s.header}>
+          <img src="/LINQR-logo.png" alt="LINQR" style={s.logo} />
+          <p style={s.dealerName}>{dealer.name}</p>
         </div>
 
-        <div style={styles.content}>
-          <div style={styles.topBar}>
-            <button style={styles.backBtn} onClick={onBack}>← Back to Dashboard</button>
-            <h2 style={styles.pageTitle}>{editListing ? "Edit Vehicle" : "Add New Vehicle"}</h2>
+        <div style={s.content}>
+          <div style={s.topBar}>
+            <button style={s.backBtn} onClick={onBack}>← Back to Dashboard</button>
+            <h2 style={s.pageTitle}>{editListing ? "Edit Vehicle" : "Add New Vehicle"}</h2>
           </div>
 
-          <div style={styles.formGrid}>
+          <div style={s.formGrid}>
 
             {/* LEFT COLUMN */}
-            <div style={styles.column}>
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>Vehicle Identity</h3>
-                <F label="Stock Number *" field="stock_number" placeholder="e.g. 23270" />
-                <F label="Make *" field="make" placeholder="e.g. Harley-Davidson" />
-                <F label="Model *" field="model" placeholder="e.g. Breakout 117" />
-                <F label="Year *" field="year" placeholder="e.g. 2026" />
-                <F label="Colour" field="colour" placeholder="e.g. Iron Horse Metallic" />
+            <div style={s.column}>
+
+              <div style={s.section}>
+                <h3 style={s.sectionTitle}>Vehicle Identity</h3>
+
+                <label style={s.label}>Stock Number *</label>
+                <input style={s.input} placeholder="e.g. 23270" value={stockNumber} onChange={e => setStockNumber(e.target.value)} />
+
+                <label style={s.label}>Make *</label>
+                <input style={s.input} placeholder="e.g. Harley-Davidson" value={make} onChange={e => setMake(e.target.value)} />
+
+                <label style={s.label}>Model *</label>
+                <input style={s.input} placeholder="e.g. Breakout 117" value={model} onChange={e => setModel(e.target.value)} />
+
+                <label style={s.label}>Year *</label>
+                <input style={s.input} placeholder="e.g. 2026" value={year} onChange={e => setYear(e.target.value)} />
+
+                <label style={s.label}>Colour</label>
+                <input style={s.input} placeholder="e.g. Iron Horse Metallic" value={colour} onChange={e => setColour(e.target.value)} />
               </div>
 
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>Specifications</h3>
-                <F label="Engine" field="engine" placeholder="e.g. 1926cc Milwaukee-Eight 117" />
-                <F label="Transmission" field="transmission" placeholder="e.g. 6-Speed Manual" />
-                <F label="Odometer" field="odometer" placeholder="e.g. 0km (New) or 5,400km" />
+              <div style={s.section}>
+                <h3 style={s.sectionTitle}>Specifications</h3>
+
+                <label style={s.label}>Engine</label>
+                <input style={s.input} placeholder="e.g. 1926cc Milwaukee-Eight 117" value={engine} onChange={e => setEngine(e.target.value)} />
+
+                <label style={s.label}>Transmission</label>
+                <input style={s.input} placeholder="e.g. 6-Speed Manual" value={transmission} onChange={e => setTransmission(e.target.value)} />
+
+                <label style={s.label}>Odometer</label>
+                <input style={s.input} placeholder="e.g. 0km (New)" value={odometer} onChange={e => setOdometer(e.target.value)} />
               </div>
 
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>Pricing</h3>
-                <F label="Price" field="price" placeholder="e.g. $41,740" />
-                <F label="Finance" field="finance" placeholder="e.g. From $210/week with 10% deposit" />
+              <div style={s.section}>
+                <h3 style={s.sectionTitle}>Pricing</h3>
+
+                <label style={s.label}>Price</label>
+                <input style={s.input} placeholder="e.g. $41,740" value={price} onChange={e => setPrice(e.target.value)} />
+
+                <label style={s.label}>Finance</label>
+                <input style={s.input} placeholder="e.g. From $210/week with 10% deposit" value={finance} onChange={e => setFinance(e.target.value)} />
               </div>
             </div>
 
             {/* RIGHT COLUMN */}
-            <div style={styles.column}>
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>Hero Photo</h3>
-                <div style={styles.imageUpload} onClick={() => document.getElementById('imgInput').click()}>
+            <div style={s.column}>
+
+              <div style={s.section}>
+                <h3 style={s.sectionTitle}>Hero Photo</h3>
+                <div style={s.imageUpload} onClick={() => document.getElementById('imgInput').click()}>
                   {imagePreview
-                    ? <img src={imagePreview} alt="Preview" style={styles.imagePreview} />
-                    : <div style={styles.imagePlaceholder}>
-                        <p style={styles.imagePlaceholderIcon}>📷</p>
-                        <p style={styles.imagePlaceholderText}>Click to upload photo</p>
-                        <p style={styles.imagePlaceholderSub}>JPG or PNG recommended</p>
+                    ? <img src={imagePreview} alt="Preview" style={s.imagePreview} />
+                    : <div style={s.imagePlaceholder}>
+                        <p style={{ fontSize: 40, margin: "0 0 8px" }}>📷</p>
+                        <p style={{ fontSize: 15, fontWeight: 700, color: "#555", margin: "0 0 4px" }}>Click to upload photo</p>
+                        <p style={{ fontSize: 12, color: "#aaa", margin: 0 }}>JPG or PNG recommended</p>
                       </div>
                   }
                 </div>
                 <input id="imgInput" type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageChange} />
-                {imagePreview && <button style={styles.changePhotoBtn} onClick={() => document.getElementById('imgInput').click()}>Change Photo</button>}
+                {imagePreview && (
+                  <button style={s.changePhotoBtn} onClick={() => document.getElementById('imgInput').click()}>
+                    Change Photo
+                  </button>
+                )}
               </div>
 
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>Description</h3>
+              <div style={s.section}>
+                <h3 style={s.sectionTitle}>Description</h3>
                 <textarea
-                  style={styles.textarea}
-                  placeholder="Describe this vehicle — what makes it special, condition, history..."
-                  value={form.description}
-                  onChange={(e) => handleChange("description", e.target.value)}
+                  style={s.textarea}
+                  placeholder="Describe this vehicle — what makes it special..."
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
                   rows={5}
                 />
               </div>
 
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>Key Features</h3>
-                <p style={styles.featuresHint}>One feature per line</p>
+              <div style={s.section}>
+                <h3 style={s.sectionTitle}>Key Features</h3>
+                <p style={{ fontSize: 12, color: "#aaa", margin: "0 0 8px" }}>One feature per line</p>
                 <textarea
-                  style={styles.textarea}
+                  style={s.textarea}
                   placeholder={"24 Months Factory Warranty\nRoadside Assistance\nHOG Membership\nNationwide Delivery"}
-                  value={form.features}
-                  onChange={(e) => handleChange("features", e.target.value)}
+                  value={features}
+                  onChange={e => setFeatures(e.target.value)}
                   rows={6}
                 />
               </div>
             </div>
           </div>
 
-          {error && <p style={styles.error}>{error}</p>}
+          {error && <p style={s.error}>{error}</p>}
 
-          <div style={styles.actions}>
-            <button style={styles.draftBtn} onClick={() => handleSave(false)} disabled={saving}>
+          <div style={s.actions}>
+            <button style={s.draftBtn} onClick={() => handleSave(false)} disabled={saving}>
               {saving ? "Saving..." : "Save as Draft"}
             </button>
-            <button style={styles.publishBtn} onClick={() => handleSave(true)} disabled={saving}>
+            <button style={s.publishBtn} onClick={() => handleSave(true)} disabled={saving}>
               {saving ? "Publishing..." : "Publish — Go Live! 🚀"}
             </button>
           </div>
         </div>
 
-        <div style={styles.footer}>
-          <p style={styles.footerText}>© LINQR 2026 · linqr.global</p>
+        <div style={{ textAlign: "center", padding: 24 }}>
+          <p style={{ fontSize: 11, color: "#bbb", margin: 0 }}>© LINQR 2026 · linqr.global</p>
         </div>
       </div>
     </div>
   );
 }
 
-const styles = {
+const s = {
   outer: { minHeight: "100vh", background: "#f5f5f5" },
   page: { maxWidth: 960, margin: "0 auto" },
   header: { background: "#1B6157", padding: "16px 24px", display: "flex", alignItems: "center", gap: 16 },
@@ -242,23 +237,16 @@ const styles = {
   formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 },
   column: { display: "flex", flexDirection: "column", gap: 20 },
   section: { background: "#fff", borderRadius: 12, padding: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" },
-  sectionTitle: { fontSize: 14, fontWeight: 700, color: "#1B6157", margin: "0 0 16px", letterSpacing: 1, textTransform: "uppercase" },
-  fieldWrap: { marginBottom: 12 },
-  label: { display: "block", fontSize: 12, fontWeight: 700, color: "#555", marginBottom: 6, letterSpacing: 0.5 },
-  input: { width: "100%", border: "2px solid #e0e0e0", borderRadius: 8, padding: "12px 14px", fontSize: 14, color: "#111", fontFamily: "Georgia, serif", boxSizing: "border-box", outline: "none" },
+  sectionTitle: { fontSize: 13, fontWeight: 700, color: "#1B6157", margin: "0 0 16px", letterSpacing: 1, textTransform: "uppercase" },
+  label: { display: "block", fontSize: 12, fontWeight: 700, color: "#555", marginBottom: 6, marginTop: 10 },
+  input: { width: "100%", border: "2px solid #e0e0e0", borderRadius: 8, padding: "12px 14px", fontSize: 14, color: "#111", fontFamily: "Georgia, serif", boxSizing: "border-box", outline: "none", marginBottom: 4 },
   textarea: { width: "100%", border: "2px solid #e0e0e0", borderRadius: 8, padding: "12px 14px", fontSize: 14, color: "#111", fontFamily: "Georgia, serif", boxSizing: "border-box", outline: "none", resize: "vertical" },
-  featuresHint: { fontSize: 12, color: "#aaa", margin: "0 0 8px" },
   imageUpload: { border: "2px dashed #e0e0e0", borderRadius: 12, cursor: "pointer", overflow: "hidden", minHeight: 160, display: "flex", alignItems: "center", justifyContent: "center" },
   imagePreview: { width: "100%", height: 200, objectFit: "cover", display: "block" },
   imagePlaceholder: { textAlign: "center", padding: 24 },
-  imagePlaceholderIcon: { fontSize: 40, margin: "0 0 8px" },
-  imagePlaceholderText: { fontSize: 15, fontWeight: 700, color: "#555", margin: "0 0 4px" },
-  imagePlaceholderSub: { fontSize: 12, color: "#aaa", margin: 0 },
-  changePhotoBtn: { width: "100%", background: "transparent", border: "1px solid #ddd", borderRadius: 6, padding: "8px", fontSize: 12, cursor: "pointer", fontFamily: "Georgia, serif", color: "#666", marginTop: 8 },
+  changePhotoBtn: { width: "100%", background: "transparent", border: "1px solid #ddd", borderRadius: 6, padding: 8, fontSize: 12, cursor: "pointer", fontFamily: "Georgia, serif", color: "#666", marginTop: 8 },
   error: { fontSize: 13, color: "#cc0000", margin: "12px 0", textAlign: "center" },
   actions: { display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 24 },
   draftBtn: { background: "transparent", color: "#1B6157", border: "2px solid #1B6157", borderRadius: 8, padding: "14px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "Georgia, serif" },
   publishBtn: { background: "#1B6157", color: "#fff", border: "none", borderRadius: 8, padding: "14px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "Georgia, serif" },
-  footer: { textAlign: "center", padding: 24 },
-  footerText: { fontSize: 11, color: "#bbb", margin: 0 },
 };
