@@ -1,4 +1,5 @@
 // © 2026 LINQR — linqr.global — All Rights Reserved
+import PortalAddProperty from './PortalAddProperty';
 import { useState, useEffect, useRef } from "react";
 import PortalLogin from "./PortalLogin.jsx";
 import PortalDashboard from "./PortalDashboard.jsx";
