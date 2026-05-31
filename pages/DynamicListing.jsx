@@ -90,14 +90,16 @@ function PropertyListing({ listing, dealer, slug }) {
         <div style={{ background: "white", borderRadius: "0 0 12px 12px", padding: 20, marginBottom: 16, borderTop: `4px solid ${brandColour}` }}>
           <div style={{ fontSize: 22, fontWeight: "bold", color: "#111", marginBottom: 4 }}>{listing.address}</div>
           {listing.suburb && <div style={{ fontSize: 16, color: "#555", marginBottom: 16 }}>{listing.suburb}</div>}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            {listing.price && (
-              <div style={{ background: brandColour, color: textOnBrand, padding: "8px 16px", borderRadius: 6, fontWeight: "bold", fontSize: 18 }}>
-                {listing.sale_method && listing.sale_method !== "Price" ? `${listing.sale_method}: ` : ""}{listing.price}
-              </div>
-            )}
-            {listing.cv && <div style={{ fontSize: 14, color: "#666" }}>CV: {listing.cv}</div>}
-          </div>
+          {(listing.sale_method || listing.price || listing.cv) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              {(listing.sale_method || listing.price) && (
+                <div style={{ background: brandColour, color: textOnBrand, padding: "8px 16px", borderRadius: 6, fontWeight: "bold", fontSize: 18 }}>
+                  {listing.sale_method && listing.sale_method !== "Price" && listing.price ? `${listing.sale_method}: ${listing.price}` : listing.sale_method && listing.sale_method !== "Price" ? listing.sale_method : listing.price || ""}
+                </div>
+              )}
+              {listing.cv && <div style={{ fontSize: 14, color: "#666" }}>CV: {listing.cv}</div>}
+            </div>
+          )}
         </div>
 
         {/* STATS BAR */}
@@ -105,7 +107,7 @@ function PropertyListing({ listing, dealer, slug }) {
           {[
             { label: "Bed", value: listing.bedrooms || "—" },
             { label: "Bath", value: listing.bathrooms || "—" },
-            { label: "Garage", value: listing.garages || "—" },
+            { label: "Car Spaces", value: listing.garages || "—" },
             { label: "Floor", value: listing.floor_area ? `${listing.floor_area}m²` : "—" },
             { label: "Land", value: listing.land_area ? `${listing.land_area}m²` : "—" },
           ].map(s => (
@@ -138,16 +140,33 @@ function PropertyListing({ listing, dealer, slug }) {
           </div>
         )}
 
-        {/* AGENT */}
-        {(listing.agent_name || listing.agent_phone) && (
-          <div style={{ background: "white", borderRadius: 10, padding: 20, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ fontSize: 12, color: "#888", marginBottom: 2 }}>YOUR AGENT</div>
-              <div style={{ fontWeight: "bold", fontSize: 16, color: "#111" }}>{listing.agent_name}</div>
-              {listing.agent_phone && <div style={{ fontSize: 14, color: "#555" }}>{listing.agent_phone}</div>}
+        {/* AGENTS */}
+        {(listing.agent_name || listing.agent2_name) && (
+          <div style={{ background: "white", borderRadius: 10, padding: 20, marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: "#888", marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>
+              {listing.agent2_name ? "Your Agents" : "Your Agent"}
             </div>
-            {listing.agent_phone && (
-              <a href={`tel:${listing.agent_phone}`} style={{ background: brandColour, color: textOnBrand, padding: "10px 18px", borderRadius: 8, textDecoration: "none", fontWeight: "bold", fontSize: 14 }}>📞 Call</a>
+            {listing.agent_name && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: listing.agent2_name ? 14 : 0 }}>
+                <div>
+                  <div style={{ fontWeight: "bold", fontSize: 16, color: "#111" }}>{listing.agent_name}</div>
+                  {listing.agent_phone && <div style={{ fontSize: 14, color: "#555" }}>{listing.agent_phone}</div>}
+                </div>
+                {listing.agent_phone && (
+                  <a href={`tel:${listing.agent_phone}`} style={{ background: brandColour, color: textOnBrand, padding: "10px 18px", borderRadius: 8, textDecoration: "none", fontWeight: "bold", fontSize: 14 }}>📞 Call</a>
+                )}
+              </div>
+            )}
+            {listing.agent2_name && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #f0f0f0", paddingTop: 14 }}>
+                <div>
+                  <div style={{ fontWeight: "bold", fontSize: 16, color: "#111" }}>{listing.agent2_name}</div>
+                  {listing.agent2_phone && <div style={{ fontSize: 14, color: "#555" }}>{listing.agent2_phone}</div>}
+                </div>
+                {listing.agent2_phone && (
+                  <a href={`tel:${listing.agent2_phone}`} style={{ background: brandColour, color: textOnBrand, padding: "10px 18px", borderRadius: 8, textDecoration: "none", fontWeight: "bold", fontSize: 14 }}>📞 Call</a>
+                )}
+              </div>
             )}
           </div>
         )}
