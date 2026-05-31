@@ -45,7 +45,7 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
         const ext = imageFile.name.split('.').pop();
         const path = `${slug}.${ext}`;
         const uploadRes = await fetch(`${LINQR_URL}/storage/v1/object/vehicle-images/${path}`, {
-          method: 'POST',
+          method: 'PUT',
           headers: { 'apikey': LINQR_KEY, 'Authorization': `Bearer ${LINQR_KEY}`, 'x-upsert': 'true', 'Content-Type': imageFile.type },
           body: imageFile
         });
