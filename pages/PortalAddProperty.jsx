@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { supabaseLinqr } from '../lib/supabaseLinqr';
+
+const LINQR_URL = "https://odnjkxgsgevuvjutqdmi.supabase.co";
+const LINQR_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kbmpreGdzZ2V2dXZqdXRxZG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxOTY0NzksImV4cCI6MjA5NTc3MjQ3OX0.tuf7P4I1xTNUMqnNLBkxAfVi-Ny4vjlWQzIX3AgTFoE";
 
 export default function PortalAddProperty({ dealer, onBack, onSuccess, editListing }) {
   const [address, setAddress] = useState(editListing?.address || '');
@@ -42,14 +44,13 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
       if (imageFile) {
         const ext = imageFile.name.split('.').pop();
         const path = `${slug}.${ext}`;
-        const { error: uploadError } = await supabaseLinqr.storage
-          .from('vehicle-images')
-          .upload(path, imageFile, { upsert: true });
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabaseLinqr.storage
-          .from('vehicle-images')
-          .getPublicUrl(path);
-        imageUrl = urlData.publicUrl;
+        const uploadRes = await fetch(`${LINQR_URL}/storage/v1/object/vehicle-images/${path}`, {
+          method: 'POST',
+          headers: { 'apikey': LINQR_KEY, 'Authorization': `Bearer ${LINQR_KEY}`, 'x-upsert': 'true', 'Content-Type': imageFile.type },
+          body: imageFile
+        });
+        if (!uploadRes.ok) throw new Error('Image upload failed');
+        imageUrl = `${LINQR_URL}/storage/v1/object/public/vehicle-images/${path}`;
       }
 
       const listing = {
@@ -76,19 +77,23 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
         make: address,
         model: suburb,
         stock_number: propertyId.toUpperCase(),
+        published: publishStatus === 'published',
       };
 
       if (editListing) {
-        const { error: updateError } = await supabaseLinqr
-          .from('listings')
-          .update(listing)
-          .eq('id', editListing.id);
-        if (updateError) throw updateError;
+        const res = await fetch(`${LINQR_URL}/rest/v1/listings?id=eq.${editListing.id}`, {
+          method: 'PATCH',
+          headers: { 'apikey': LINQR_KEY, 'Authorization': `Bearer ${LINQR_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify(listing)
+        });
+        if (!res.ok) throw new Error('Update failed');
       } else {
-        const { error: insertError } = await supabaseLinqr
-          .from('listings')
-          .insert([listing]);
-        if (insertError) throw insertError;
+        const res = await fetch(`${LINQR_URL}/rest/v1/listings`, {
+          method: 'POST',
+          headers: { 'apikey': LINQR_KEY, 'Authorization': `Bearer ${LINQR_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify(listing)
+        });
+        if (!res.ok) throw new Error('Insert failed');
       }
 
       if (publishStatus === 'published') {
