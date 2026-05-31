@@ -4,6 +4,13 @@ import { useState } from "react";
 const LINQR_SUPABASE_URL = "https://odnjkxgsgevuvjutqdmi.supabase.co";
 const LINQR_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kbmpreGdzZ2V2dXZqdXRxZG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxOTY0NzksImV4cCI6MjA5NTc3MjQ3OX0.tuf7P4I1xTNUMqnNLBkxAfVi-Ny4vjlWQzIX3AgTFoE";
 
+// Safe features parser — handles text (new) or legacy array
+function parseFeatures(raw) {
+  if (!raw) return "";
+  if (Array.isArray(raw)) return raw.join("\n");
+  return raw;
+}
+
 export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListing }) {
   const [stockNumber, setStockNumber] = useState(editListing?.stock_number || "");
   const [make, setMake] = useState(editListing?.make || "");
@@ -16,7 +23,7 @@ export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListin
   const [price, setPrice] = useState(editListing?.price || "");
   const [finance, setFinance] = useState(editListing?.finance || "");
   const [description, setDescription] = useState(editListing?.description || "");
-  const [features, setFeatures] = useState(editListing?.features?.join("\n") || "");
+  const [features, setFeatures] = useState(parseFeatures(editListing?.features));
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(editListing?.image_url || null);
   const [saving, setSaving] = useState(false);
@@ -33,11 +40,12 @@ export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListin
     const ext = file.name.split('.').pop();
     const path = `${slug}.${ext}`;
     const res = await fetch(`${LINQR_SUPABASE_URL}/storage/v1/object/vehicle-images/${path}`, {
-      method: "POST",
+      method: "PUT",
       headers: {
         "apikey": LINQR_ANON_KEY,
         "Authorization": `Bearer ${LINQR_ANON_KEY}`,
         "Content-Type": file.type,
+        "x-upsert": "true",
       },
       body: file,
     });
@@ -57,14 +65,13 @@ export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListin
       let imageUrl = editListing?.image_url || null;
       if (imageFile) imageUrl = await uploadImage(imageFile, slug);
 
-      const featuresArray = features.split("\n").map(f => f.trim()).filter(Boolean);
-
       const payload = {
         dealer_id: dealer.id,
         stock_number: stockNumber,
         slug,
+        listing_type: 'vehicle',
         make, model, year, colour, engine, transmission, odometer, price, finance, description,
-        features: featuresArray,
+        features: features,
         image_url: imageUrl,
         published: publish,
       };
