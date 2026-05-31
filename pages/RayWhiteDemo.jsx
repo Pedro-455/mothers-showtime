@@ -310,7 +310,7 @@ const styles = {
   secondaryBtn: { display: "block", background: "transparent", color: "#111", border: "2px solid #111", borderRadius: 8, padding: "16px 24px", fontSize: 15, fontWeight: 700, textAlign: "center", textDecoration: "none", fontFamily: "'Georgia', serif" },
 
   saveSection: { paddingBottom: 32 },
-  saveBtn: { width: "100%", background: "#FFCD00", border: "2px solid #e6b800", borderRadius: 8, padding: "18px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif", color: "#111" },
+  saveBtn: { width: "100%", background: "#003087", border: "2px solid #002070", borderRadius: 8, padding: "18px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif", color: "#fff" },
   quickSendBox: { textAlign: "center" },
   quickSendTitle: { fontSize: 16, fontWeight: 700, color: "#111", margin: "0 0 12px" },
   quickSendBtn: { width: "100%", background: "#003087", color: "#fff", border: "none", borderRadius: 8, padding: "18px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Georgia', serif", marginBottom: 8 },
@@ -347,7 +347,7 @@ const styles = {
 const css = `
   .primary-btn:hover { background: #e6b800 !important; }
   .secondary-btn:hover { background: #111 !important; color: #FFCD00 !important; }
-  .save-btn:hover { background: #e6b800 !important; }
+  .save-btn:hover { background: #002070 !important; }
   .send-btn:hover { background: #333 !important; }
   .quick-send-btn:hover { background: #002070 !important; }
   .form-input:focus { border-color: #FFCD00 !important; outline: none; }
