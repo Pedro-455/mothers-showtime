@@ -18,7 +18,7 @@ export default function Portal() {
   }, []);
 
   useEffect(() => {
-    if (view === "success" && successListing?.published && qrRef.current) {
+    if (view === "success" && successListing && qrRef.current) {
       qrRef.current.innerHTML = "";
       const url = `https://linqr.global/${successListing.slug}`;
       const script = document.createElement("script");
@@ -28,7 +28,7 @@ export default function Portal() {
           text: url,
           width: 260,
           height: 260,
-          colorDark: "#1B6157",
+          colorDark: isRayWhite ? "#000000" : "#1B6157",
           colorLight: "#ffffff",
           correctLevel: window.QRCode.CorrectLevel.H,
         });
@@ -41,14 +41,16 @@ export default function Portal() {
   function handleLogout() { localStorage.removeItem("linqr_dealer"); setDealer(null); }
   function handleAddNew() { setEditListing(null); setView("add"); }
   function handleAddProperty() { setEditListing(null); setView("add-property"); }
-  function handleEdit(listing) { setEditListing(listing); setView("add"); }
-  function handleSuccess(listing, published) { setSuccessListing({ ...listing, published }); setView("success"); }
-
-  function handlePrint() {
-    window.print();
+  function handleEdit(listing) {
+    setEditListing(listing);
+    setView(listing.listing_type === 'property' ? "add-property" : "add");
   }
+  function handleSuccess(listing) { setSuccessListing(listing); setView("success"); }
+  function handlePrint() { window.print(); }
 
   if (!dealer) return <PortalLogin onLogin={handleLogin} />;
+
+  const isRayWhite = dealer?.brand_colour === '#FFCD00';
 
   if (view === "add") return (
     <PortalAddVehicle
@@ -69,10 +71,25 @@ export default function Portal() {
   );
 
   if (view === "success" && successListing) {
-    const dealerName = dealer.name;
-    const modelName = `${successListing.year} ${successListing.make} ${successListing.model}`;
-    const stockNum = successListing.stock_number;
     const liveUrl = `linqr.global/${successListing.slug}`;
+    const isProperty = successListing.listing_type === 'property' || successListing.address;
+
+    // What to show on the QR card
+    const qrLine1 = isProperty ? successListing.address : `${successListing.year || ''} ${successListing.make} ${successListing.model}`;
+    const qrLine2 = isProperty ? (successListing.suburb || '') : '';
+    const qrLine3 = isProperty ? `ID: ${successListing.propertyId || successListing.property_id || ''}` : `Stock #${successListing.stock_number}`;
+
+    // Branding
+    const headerBg = isRayWhite ? '#FFCD00' : '#1B6157';
+    const headerTextColour = isRayWhite ? '#000' : '#fff';
+    const accentColour = isRayWhite ? '#000' : '#1B6157';
+    const urlBoxBg = isRayWhite ? '#FFFBEA' : '#f0faf7';
+    const urlBoxBorder = isRayWhite ? '#FFCD00' : '#1B6157';
+    const printBtnBg = isRayWhite ? '#FFCD00' : '#1B6157';
+    const printBtnColour = isRayWhite ? '#000' : '#fff';
+    const dashBtnBorder = isRayWhite ? '#FFCD00' : '#1B6157';
+    const dashBtnColour = isRayWhite ? '#000' : '#1B6157';
+    const qrDividerColour = isRayWhite ? '#FFCD00' : '#1B6157';
 
     return (
       <div style={s.outer}>
@@ -86,53 +103,50 @@ export default function Portal() {
 
         <div style={s.successPage}>
 
-          {/* TOP ACTIONS */}
-          <div style={s.successHeader}>
-            <img src="/LINQR-logo.png" alt="LINQR" style={s.logo} />
+          {/* HEADER */}
+          <div style={{ ...s.successHeader, background: headerBg }}>
+            {isRayWhite
+              ? <div style={{ fontWeight: 900, fontSize: 22, color: '#000', letterSpacing: 1 }}>RAY WHITE</div>
+              : <img src="/LINQR-logo.png" alt="LINQR" style={s.logo} />
+            }
           </div>
 
+          {/* SUCCESS BODY */}
           <div style={s.successBody}>
             <p style={s.successEmoji}>🚀</p>
             <h2 style={s.successTitle}>You're Live!</h2>
-            <p style={s.successSub}>Your listing is now live at:</p>
-            <div style={s.urlBox}>
-              <p style={s.urlText}>{liveUrl}</p>
+            <p style={s.successSub}>Your {isProperty ? 'property' : 'listing'} is now live at:</p>
+            <div style={{ ...s.urlBox, background: urlBoxBg, border: `2px solid ${urlBoxBorder}` }}>
+              <p style={{ ...s.urlText, color: accentColour }}>{liveUrl}</p>
             </div>
-            <a href={`https://${liveUrl}`} target="_blank" rel="noopener noreferrer" style={s.viewBtn}>
+            <a href={`https://${liveUrl}`} target="_blank" rel="noopener noreferrer"
+              style={{ ...s.viewBtn, background: accentColour, color: isRayWhite ? '#fff' : '#fff' }}>
               View Live Page →
             </a>
           </div>
 
-          {/* QR CARD */}
+          {/* QR SECTION */}
           <div style={s.qrSection}>
             <h3 style={s.qrSectionTitle}>Your LINQR QR Code</h3>
-            <p style={s.qrSectionSub}>Print and attach to the vehicle</p>
+            <p style={s.qrSectionSub}>Print and attach to the {isProperty ? 'property' : 'vehicle'}</p>
 
             <div id="qr-print-card" style={s.qrCard}>
-
-              {/* QR CODE with LINQR overlay */}
               <div style={s.qrWrapper}>
                 <div ref={qrRef} style={s.qrCode} />
-                {/* LINQR logo overlay in centre */}
-                <div style={s.qrLogoOverlay}>
+                <div style={{ ...s.qrLogoOverlay, background: accentColour }}>
                   <img src="/LINQR-logo.png" alt="LINQR" style={s.qrLogoImg} />
                 </div>
               </div>
-
-              {/* DIVIDER */}
-              <div style={s.qrDivider} />
-
-              {/* DEALER & VEHICLE INFO */}
-              <p style={s.qrDealerName}>{dealerName}</p>
-              <p style={s.qrModelName}>{successListing.make} {successListing.model}</p>
-              <p style={s.qrStockNum}>Stock #{stockNum}</p>
+              <div style={{ ...s.qrDivider, background: qrDividerColour }} />
+              <p style={s.qrDealerName}>{dealer.name}</p>
+              <p style={s.qrModelName}>{qrLine1}</p>
+              {qrLine2 && <p style={s.qrModelName}>{qrLine2}</p>}
+              <p style={s.qrStockNum}>{qrLine3}</p>
               <p style={s.qrCopyright}>© LINQR 2026 · linqr.global</p>
-
             </div>
 
-            {/* PRINT & DOWNLOAD BUTTONS */}
             <div style={s.qrActions}>
-              <button style={s.printBtn} onClick={handlePrint}>
+              <button style={{ ...s.printBtn, background: printBtnBg, color: printBtnColour }} onClick={handlePrint}>
                 🖨️ Print QR Code
               </button>
             </div>
@@ -140,11 +154,11 @@ export default function Portal() {
 
           {/* BOTTOM NAVIGATION */}
           <div style={s.bottomActions}>
-            <button style={s.dashBtn} onClick={() => setView("dashboard")}>
+            <button style={{ ...s.dashBtn, border: `2px solid ${dashBtnBorder}`, color: dashBtnColour }} onClick={() => setView("dashboard")}>
               ← Back to Dashboard
             </button>
-            <button style={s.addAnotherBtn} onClick={handleAddNew}>
-              + Add Another Vehicle
+            <button style={s.addAnotherBtn} onClick={isProperty ? handleAddProperty : handleAddNew}>
+              + Add Another {isProperty ? 'Property' : 'Vehicle'}
             </button>
           </div>
 
@@ -172,41 +186,38 @@ const s = {
   outer: { minHeight: "100vh", background: "#f5f5f5" },
   successPage: { maxWidth: 520, margin: "0 auto", paddingBottom: 60 },
 
-  successHeader: { background: "#1B6157", padding: "16px 24px", display: "flex", justifyContent: "center" },
+  successHeader: { padding: "16px 24px", display: "flex", justifyContent: "center" },
   logo: { height: 36, width: "auto" },
 
   successBody: { background: "#fff", margin: "0 16px", padding: "32px 24px", textAlign: "center", borderBottom: "1px solid #f0f0f0" },
   successEmoji: { fontSize: 48, margin: "0 0 12px" },
   successTitle: { fontSize: 28, fontWeight: 900, color: "#111", margin: "0 0 8px", fontFamily: "Georgia, serif" },
   successSub: { fontSize: 14, color: "#888", margin: "0 0 16px" },
-  urlBox: { background: "#f0faf7", border: "2px solid #1B6157", borderRadius: 8, padding: "12px 20px", marginBottom: 16, display: "inline-block" },
-  urlText: { fontSize: 15, fontWeight: 700, color: "#1B6157", margin: 0, fontFamily: "Georgia, serif" },
-  viewBtn: { display: "inline-block", background: "#1B6157", color: "#fff", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, textDecoration: "none", fontFamily: "Georgia, serif" },
+  urlBox: { borderRadius: 8, padding: "12px 20px", marginBottom: 16, display: "inline-block" },
+  urlText: { fontSize: 15, fontWeight: 700, margin: 0, fontFamily: "Georgia, serif" },
+  viewBtn: { display: "inline-block", borderRadius: 8, padding: "12px 24px", fontSize: 14, fontWeight: 700, textDecoration: "none", fontFamily: "Georgia, serif" },
 
-  // QR SECTION
-  qrSection: { background: "#fff", margin: "16px 16px 0", padding: "28px 24px", borderRadius: 0, textAlign: "center" },
+  qrSection: { background: "#fff", margin: "16px 16px 0", padding: "28px 24px", textAlign: "center" },
   qrSectionTitle: { fontSize: 18, fontWeight: 700, color: "#111", margin: "0 0 4px", fontFamily: "Georgia, serif" },
   qrSectionSub: { fontSize: 13, color: "#888", margin: "0 0 24px" },
 
-  // THE QR CARD — this is what gets printed
   qrCard: { display: "inline-block", background: "#fff", border: "2px solid #e0e0e0", borderRadius: 16, padding: "24px 28px 20px", textAlign: "center", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" },
-
   qrWrapper: { position: "relative", display: "inline-block", marginBottom: 16 },
   qrCode: { display: "block" },
-  qrLogoOverlay: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: "#1B6157", borderRadius: 8, padding: "6px 10px", border: "3px solid #fff" },
+  qrLogoOverlay: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", borderRadius: 8, padding: "6px 10px", border: "3px solid #fff" },
   qrLogoImg: { height: 22, width: "auto", display: "block" },
 
-  qrDivider: { width: "100%", height: 2, background: "#1B6157", margin: "0 0 14px", borderRadius: 1 },
+  qrDivider: { width: "100%", height: 2, margin: "0 0 14px", borderRadius: 1 },
   qrDealerName: { fontSize: 15, fontWeight: 900, color: "#111", margin: "0 0 4px", fontFamily: "Georgia, serif", letterSpacing: 0.5 },
   qrModelName: { fontSize: 13, fontWeight: 700, color: "#444", margin: "0 0 4px", fontFamily: "Georgia, serif" },
   qrStockNum: { fontSize: 12, color: "#888", margin: "0 0 10px", fontFamily: "Georgia, serif" },
   qrCopyright: { fontSize: 10, color: "#bbb", margin: 0, letterSpacing: 1 },
 
   qrActions: { marginTop: 20, display: "flex", gap: 12, justifyContent: "center" },
-  printBtn: { background: "#1B6157", color: "#fff", border: "none", borderRadius: 8, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "Georgia, serif" },
+  printBtn: { border: "none", borderRadius: 8, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "Georgia, serif" },
 
   bottomActions: { display: "flex", gap: 12, margin: "16px 16px 0", flexDirection: "column" },
-  dashBtn: { background: "#fff", color: "#1B6157", border: "2px solid #1B6157", borderRadius: 8, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "Georgia, serif" },
+  dashBtn: { background: "#fff", borderRadius: 8, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "Georgia, serif" },
   addAnotherBtn: { background: "#f5f5f5", color: "#666", border: "none", borderRadius: 8, padding: "14px", fontSize: 15, cursor: "pointer", fontFamily: "Georgia, serif" },
 
   footer: { textAlign: "center", padding: 24 },
