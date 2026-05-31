@@ -8,6 +8,14 @@ const LINQR_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 const OLD_SUPABASE_URL = "https://sfymjnjpqvgtoxofndzx.supabase.co";
 const OLD_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeW1qbmpwcXZndG94b2ZuZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzI1MTAsImV4cCI6MjA3MzE0ODUxMH0.RqBItIZ-Iz_XhKcJNsJSR6e3n5jxW_YKHWGHO5j1z2c";
 
+// Safe parser — handles text (one per line) OR legacy array
+function parseFeatures(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(f => f && f.trim());
+  if (typeof raw === "string") return raw.split("\n").map(f => f.trim()).filter(Boolean);
+  return [];
+}
+
 // ─── PROPERTY LISTING VIEW ────────────────────────────────────────────────────
 function PropertyListing({ listing, dealer, slug }) {
   const [name, setName] = useState("");
@@ -25,29 +33,30 @@ function PropertyListing({ listing, dealer, slug }) {
   const brandColour = dealer?.brand_colour || "#FFCD00";
   const isRayWhite = brandColour === "#FFCD00";
   const textOnBrand = isRayWhite ? "#000000" : "#ffffff";
-
-  const features = listing.features
-    ? (typeof listing.features === "string" ? listing.features.split("\n").filter(f => f.trim()) : listing.features)
-    : [];
+  const features = parseFeatures(listing.features);
 
   async function handleSend() {
     setSending(true);
     localStorage.setItem("ms_name", name);
     localStorage.setItem("ms_email", email);
     try {
-      await fetch(`${OLD_SUPABASE_URL}/functions/v1/send-sellsheet-email`, {
+      const res = await fetch(`${OLD_SUPABASE_URL}/functions/v1/send-sellsheet-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OLD_ANON_KEY}` },
         body: JSON.stringify({
-          name, email,
-          car_name: `${listing.address}${listing.suburb ? ", " + listing.suburb : ""}`,
-          car_url: `https://linqr.global/${slug}`,
-          opt_in: true,
+          name,
+          email,
+          carName: `${listing.address}${listing.suburb ? ", " + listing.suburb : ""}`,
+          carUrl: `https://linqr.global/${slug}`,
+          optIn: true,
           source: "property-portal"
         })
       });
+      if (!res.ok) throw new Error("Failed");
       setSent(true);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
     setSending(false);
   }
 
@@ -240,9 +249,10 @@ export default function DynamicListing() {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OLD_ANON_KEY}` },
         body: JSON.stringify({
-          name, email,
+          name,
+          email,
           optIn: quickSend ? false : optIn,
-          carName: `${listing.year} ${listing.make} ${listing.model}`,
+          carName: `${listing.year || ""} ${listing.make} ${listing.model}`.trim(),
           carUrl: `https://linqr.global/${slug}`,
         }),
       });
@@ -276,8 +286,10 @@ export default function DynamicListing() {
     return <PropertyListing listing={listing} dealer={dealer} slug={slug} />;
   }
 
-  // ── VEHICLE VIEW (original) ──────────────────────────────────────────────────
+  // ── VEHICLE VIEW ─────────────────────────────────────────────────────────────
   const brandColour = dealer?.brand_colour || "#1B6157";
+  const features = parseFeatures(listing.features);
+
   const specs = [
     { label: "Make", value: listing.make },
     { label: "Model", value: listing.model },
@@ -366,12 +378,12 @@ export default function DynamicListing() {
           </div>
 
           {/* FEATURES */}
-          {listing.features && listing.features.length > 0 && (
+          {features.length > 0 && (
             <div style={{ padding: "32px 0", borderBottom: "1px solid #f0f0f0" }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: brandColour, margin: "0 0 20px", letterSpacing: 1, textTransform: "uppercase" }}>Features</h2>
               <div className="feature-grid" style={{ gap: 10 }}>
-                {listing.features.map(f => (
-                  <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#444", lineHeight: 1.4 }}>
+                {features.map((f, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#444", lineHeight: 1.4 }}>
                     <span style={{ color: brandColour, fontSize: 8, flexShrink: 0, marginTop: 4 }}>●</span>
                     <span>{f}</span>
                   </div>
