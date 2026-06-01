@@ -1,0 +1,21 @@
+{
+  "name": "LINQR",
+  "short_name": "LINQR",
+  "description": "QR-powered digital profiles for vehicles and property",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#1B6157",
+  "icons": [
+    {
+      "src": "/LINQR-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/LINQR-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
