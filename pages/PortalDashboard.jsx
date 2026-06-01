@@ -133,17 +133,18 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
   }
 
   const isRayWhite = dealer?.brand_colour === '#FFCD00';
+  const isPropertyDealer = dealer?.dealer_type === 'property';
   const brandColour = dealer?.brand_colour || '#1B6157';
   const headerTextColour = isRayWhite ? '#000000' : '#ffffff';
 
   const AddButtons = () => (
     <div style={styles.addButtons}>
-      {!isRayWhite && (
+      {!isPropertyDealer && (
         <button style={{ ...styles.addBtn, background: brandColour, color: headerTextColour }} onClick={onAddNew}>
           🚗 Add Vehicle
         </button>
       )}
-      {onAddProperty && (
+      {isPropertyDealer && (
         <button style={{ ...styles.addBtn, background: isRayWhite ? '#111' : brandColour, color: isRayWhite ? '#FFCD00' : '#fff' }} onClick={onAddProperty}>
           🏡 Add Property
         </button>
@@ -160,7 +161,9 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
           <div>
             {isRayWhite
               ? <div style={{ fontWeight: 900, fontSize: 22, color: '#000', letterSpacing: 1 }}>RAY WHITE</div>
-              : <img src="/LINQR-logo.png" alt="LINQR" style={styles.logo} />
+              : dealer?.logo_url
+                ? <img src={dealer.logo_url} alt={dealer.name} style={{ height: 40, width: 'auto' }} />
+                : <img src="/LINQR-logo.png" alt="LINQR" style={styles.logo} />
             }
           </div>
           <div style={styles.headerRight}>
@@ -222,9 +225,9 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
 
           {!loading && listings.length === 0 && (
             <div style={styles.emptyState}>
-              <p style={styles.emptyIcon}>{isRayWhite ? '🏡' : '🏍️'}</p>
+              <p style={styles.emptyIcon}>{isPropertyDealer ? '🏡' : '🚗'}</p>
               <p style={styles.emptyTitle}>No listings yet</p>
-              <p style={styles.emptySub}>Add your first {isRayWhite ? 'property' : 'vehicle'} to get started</p>
+              <p style={styles.emptySub}>Add your first {isPropertyDealer ? 'property' : 'vehicle'} to get started</p>
               <AddButtons />
             </div>
           )}
