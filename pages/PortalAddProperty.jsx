@@ -21,6 +21,7 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
   const [agent2Name, setAgent2Name] = useState(editListing?.agent2_name || '');
   const [agent2Phone, setAgent2Phone] = useState(editListing?.agent2_phone || '');
   const [propertyId, setPropertyId] = useState(editListing?.property_id || '');
+  const [listingUrl, setListingUrl] = useState(editListing?.listing_url || '');
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(editListing?.image_url || null);
   const [saving, setSaving] = useState(false);
@@ -86,6 +87,7 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
         agent_phone: agent1Phone,
         agent2_name: agent2Name || null,
         agent2_phone: agent2Phone || null,
+        listing_url: listingUrl || null,
       };
 
       if (editListing) {
@@ -294,6 +296,15 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Listing URL */}
+        <div style={sectionStyle}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '15px', color: '#000', borderBottom: '2px solid #FFCD00', paddingBottom: '8px' }}>Dealer Listing Link <span style={{ fontWeight: 'normal', fontSize: '12px', color: '#888' }}>(optional)</span></h3>
+          <div>
+            <label style={labelStyle}>Link to your website or realestate.co.nz listing</label>
+            <input style={inputStyle} value={listingUrl} onChange={e => setListingUrl(e.target.value)} placeholder="https://www.realestate.co.nz/residential/sale/auckland/howick/HOW45015" />
           </div>
         </div>
 
