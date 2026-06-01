@@ -4,9 +4,14 @@ import { useState, useEffect } from "react";
 const LINQR_SUPABASE_URL = "https://odnjkxgsgevuvjutqdmi.supabase.co";
 const LINQR_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kbmpreGdzZ2V2dXZqdXRxZG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxOTY0NzksImV4cCI6MjA5NTc3MjQ3OX0.tuf7P4I1xTNUMqnNLBkxAfVi-Ny4vjlWQzIX3AgTFoE";
 
+const OLD_SUPABASE_URL = "https://sfymjnjpqvgtoxofndzx.supabase.co";
+const OLD_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeW1qbmpwcXZndG94b2ZuZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzI1MTAsImV4cCI6MjA3MzE0ODUxMH0.RqBItIZ-Iz_XhKcJNsJSR6e3n5jxW_YKHWGHO5j1z2c";
+
 export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddProperty, onEdit }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [leadDays, setLeadDays] = useState(7);
+  const [downloadingLeads, setDownloadingLeads] = useState(false);
 
   useEffect(() => { fetchListings(); }, []);
 
@@ -42,6 +47,88 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
     fetchListings();
   }
 
+  async function downloadLeads() {
+    setDownloadingLeads(true);
+    try {
+      // Build date filter
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - leadDays);
+      const fromISO = fromDate.toISOString();
+
+      // Get all slugs for this dealer
+      const slugs = listings.map(l => l.slug);
+      if (slugs.length === 0) {
+        alert("No listings found for this dealer.");
+        setDownloadingLeads(false);
+        return;
+      }
+
+      // Build slug filter for PostgREST — in.(slug1,slug2,...)
+      const slugFilter = slugs.map(s => `car_url.ilike.*${s}*`).join(',');
+
+      // Fetch leads from OLD Supabase — filter by date
+      const res = await fetch(
+        `${OLD_SUPABASE_URL}/rest/v1/sellsheet_contacts?created_at=gte.${fromISO}&order=created_at.desc&select=*`,
+        { headers: { "apikey": OLD_ANON_KEY, "Authorization": `Bearer ${OLD_ANON_KEY}` } }
+      );
+      const allLeads = await res.json();
+
+      // Filter to only this dealer's listings by matching slug in car_url
+      const dealerLeads = (allLeads || []).filter(lead => {
+        if (!lead.car_url) return false;
+        return slugs.some(slug => lead.car_url.includes(slug));
+      });
+
+      if (dealerLeads.length === 0) {
+        alert(`No leads found in the last ${leadDays} days.`);
+        setDownloadingLeads(false);
+        return;
+      }
+
+      // Build CSV
+      const headers = ["Name", "Email", "Listing", "Reference", "Date"];
+      const rows = dealerLeads.map(lead => {
+        // Find matching listing for this lead
+        const matchedListing = listings.find(l => lead.car_url && lead.car_url.includes(l.slug));
+        const listingName = matchedListing
+          ? (matchedListing.listing_type === 'property'
+              ? matchedListing.address
+              : `${matchedListing.year || ''} ${matchedListing.make} ${matchedListing.model}`.trim())
+          : (lead.car_name || '');
+        const reference = matchedListing
+          ? (matchedListing.listing_type === 'property'
+              ? matchedListing.property_id
+              : `Stock #${matchedListing.stock_number}`)
+          : '';
+        const date = lead.created_at
+          ? new Date(lead.created_at).toLocaleDateString('en-NZ', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : '';
+        return [
+          `"${lead.name || ''}"`,
+          `"${lead.email || ''}"`,
+          `"${listingName}"`,
+          `"${reference}"`,
+          `"${date}"`
+        ].join(',');
+      });
+
+      const csv = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${dealer.code}-leads-last-${leadDays}-days.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+    } catch (e) {
+      console.error(e);
+      alert("Something went wrong downloading leads.");
+    } finally {
+      setDownloadingLeads(false);
+    }
+  }
+
   const isRayWhite = dealer?.brand_colour === '#FFCD00';
   const brandColour = dealer?.brand_colour || '#1B6157';
   const headerTextColour = isRayWhite ? '#000000' : '#ffffff';
@@ -64,6 +151,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
   return (
     <div style={styles.outer}>
       <div style={styles.page}>
+
         {/* HEADER */}
         <div style={{ ...styles.header, background: brandColour }}>
           <div>
@@ -98,6 +186,28 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
           </div>
         </div>
 
+        {/* LEADS DOWNLOAD BAR */}
+        <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#333', fontFamily: 'Georgia, serif' }}>📥 Download Leads</div>
+          <select
+            value={leadDays}
+            onChange={e => setLeadDays(Number(e.target.value))}
+            style={{ border: '1px solid #ddd', borderRadius: 6, padding: '6px 10px', fontSize: 13, fontFamily: 'Georgia, serif', color: '#333', cursor: 'pointer' }}
+          >
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 90 days</option>
+          </select>
+          <button
+            onClick={downloadLeads}
+            disabled={downloadingLeads}
+            style={{ background: brandColour, color: isRayWhite ? '#000' : '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Georgia, serif' }}
+          >
+            {downloadingLeads ? 'Downloading...' : '⬇️ Download CSV'}
+          </button>
+          <span style={{ fontSize: 12, color: '#aaa', fontFamily: 'Georgia, serif' }}>Name · Email · Listing · Reference · Date</span>
+        </div>
+
         {/* CONTENT */}
         <div style={styles.content}>
           <div style={styles.contentHeader}>
@@ -119,10 +229,10 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
           {listings.map(listing => (
             <div key={listing.id} style={styles.listingCard}>
               <div style={styles.listingLeft}>
-                {listing.image_url && (
-                  <img src={listing.image_url} alt={listing.model} style={styles.listingImg} />
-                )}
-                {!listing.image_url && <div style={styles.listingImgPlaceholder}>📷</div>}
+                {listing.image_url
+                  ? <img src={listing.image_url} alt={listing.model} style={styles.listingImg} />
+                  : <div style={styles.listingImgPlaceholder}>📷</div>
+                }
               </div>
               <div style={styles.listingInfo}>
                 <p style={styles.listingTitle}>
