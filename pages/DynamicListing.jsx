@@ -91,10 +91,16 @@ function PropertyListing({ listing, dealer, slug }) {
           <div style={{ fontSize: 22, fontWeight: "bold", color: "#111", marginBottom: 4 }}>{listing.address}</div>
           {listing.suburb && <div style={{ fontSize: 16, color: "#555", marginBottom: 16 }}>{listing.suburb}</div>}
           {(listing.sale_method || listing.price || listing.cv) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              {(listing.sale_method || listing.price) && (
-                <div style={{ background: brandColour, color: textOnBrand, padding: "8px 16px", borderRadius: 6, fontWeight: "bold", fontSize: 18 }}>
-                  {listing.sale_method && listing.sale_method !== "Price" && listing.price ? `${listing.sale_method}: ${listing.price}` : listing.sale_method && listing.sale_method !== "Price" ? listing.sale_method : listing.price || ""}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+              {listing.sale_method && listing.sale_method !== "Price" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>Method of Sale</span>
+                  <span style={{ background: "#f0f0f0", color: "#333", padding: "4px 12px", borderRadius: 4, fontWeight: "bold", fontSize: 14, border: "1px solid #ddd" }}>{listing.sale_method}</span>
+                </div>
+              )}
+              {listing.price && (
+                <div style={{ background: brandColour, color: textOnBrand, padding: "8px 16px", borderRadius: 6, fontWeight: "bold", fontSize: 18, display: "inline-block", alignSelf: "flex-start" }}>
+                  {listing.price}
                 </div>
               )}
               {listing.cv && <div style={{ fontSize: 14, color: "#666" }}>CV: {listing.cv}</div>}
@@ -168,6 +174,16 @@ function PropertyListing({ listing, dealer, slug }) {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* LISTING URL */}
+        {listing.listing_url && (
+          <div style={{ marginBottom: 16 }}>
+            <a href={listing.listing_url} target="_blank" rel="noopener noreferrer"
+              style={{ display: "block", background: "#111", color: "#fff", padding: "16px 20px", borderRadius: 10, textDecoration: "none", fontWeight: "bold", fontSize: 16, textAlign: "center", fontFamily: "Georgia, serif", letterSpacing: 0.5 }}>
+              🔗 View Full Listing & All Photos →
+            </a>
           </div>
         )}
 
@@ -424,6 +440,16 @@ export default function DynamicListing() {
             <div style={{ margin: "24px 0", background: "#f9f9f9", border: "1px solid #e0e0e0", borderRadius: 12, padding: 24 }}>
               <p style={{ fontSize: 16, fontWeight: 700, color: brandColour, margin: "0 0 8px" }}>💰 Finance Available</p>
               <p style={{ fontSize: 14, color: "#666", lineHeight: 1.7, margin: 0 }}>{listing.finance}</p>
+            </div>
+          )}
+
+          {/* LISTING URL */}
+          {listing.listing_url && (
+            <div style={{ padding: "0 0 24px" }}>
+              <a href={listing.listing_url} target="_blank" rel="noopener noreferrer"
+                style={{ display: "block", background: "#111", color: "#fff", padding: "18px 24px", borderRadius: 8, textDecoration: "none", fontWeight: "bold", fontSize: 16, textAlign: "center", fontFamily: "Georgia, serif", letterSpacing: 0.5 }}>
+                🔗 View Full Listing & All Photos →
+              </a>
             </div>
           )}
 
