@@ -180,24 +180,32 @@ function PropertyListing({ listing, dealer, slug }) {
           ) : (
             <>
               {remembered && (
-                <div style={{ fontSize: 13, color: "#666", marginBottom: 10 }}>
-                  Sending as <strong>{name}</strong> ·{" "}
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: "#111", margin: "0 0 12px" }}>📧 Send to {email}?</p>
+                  <button onClick={handleSend} disabled={sending}
+                    style={{ width: "100%", background: "#FFD700", border: "2px solid #F0C000", borderRadius: 8, padding: 18, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "Georgia, serif", color: "#111", marginBottom: 8 }}>
+                    {sending ? "Sending..." : "Yes — Send It to Me →"}
+                  </button>
                   <button onClick={() => { setRemembered(false); setName(""); setEmail(""); localStorage.removeItem("ms_name"); localStorage.removeItem("ms_email"); }}
-                    style={{ background: "none", border: "none", color: "#c00", cursor: "pointer", fontSize: 13 }}>Not me</button>
+                    style={{ display: "block", width: "100%", background: "transparent", border: "none", color: "#888", fontSize: 13, cursor: "pointer", padding: "12px 0", fontFamily: "Georgia, serif" }}>
+                    Not me — use a different email
+                  </button>
                 </div>
               )}
               {!remembered && (
-                <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-                  <input style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 6, fontSize: 14, boxSizing: "border-box", fontFamily: "Georgia, serif" }}
-                    value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
-                  <input style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 6, fontSize: 14, boxSizing: "border-box", fontFamily: "Georgia, serif" }}
-                    value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" type="email" />
-                </div>
+                <>
+                  <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+                    <input style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 6, fontSize: 14, boxSizing: "border-box", fontFamily: "Georgia, serif" }}
+                      value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
+                    <input style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 6, fontSize: 14, boxSizing: "border-box", fontFamily: "Georgia, serif" }}
+                      value={email} onChange={e => setEmail(e.target.value)} placeholder="Your email" type="email" />
+                  </div>
+                  <button onClick={handleSend} disabled={sending || !name || !email}
+                    style={{ width: "100%", padding: 12, background: "#111", color: brandColour, border: "none", borderRadius: 8, fontSize: 15, fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif" }}>
+                    {sending ? "Sending..." : "✉️ Send Me This Property"}
+                  </button>
+                </>
               )}
-              <button onClick={handleSend} disabled={sending || !name || !email}
-                style={{ width: "100%", padding: 12, background: "#111", color: brandColour, border: "none", borderRadius: 8, fontSize: 15, fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif" }}>
-                {sending ? "Sending..." : "✉️ Send Me This Property"}
-              </button>
             </>
           )}
         </div>
