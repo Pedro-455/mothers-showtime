@@ -55,32 +55,36 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
       fromDate.setDate(fromDate.getDate() - leadDays);
       const fromISO = fromDate.toISOString();
 
-      // Get all slugs for this dealer
+      // Get all slugs for this dealer — also get dealer code for broader matching
       const slugs = listings.map(l => l.slug);
+      const dealerCode = dealer.code.toLowerCase();
+
       if (slugs.length === 0) {
         alert("No listings found for this dealer.");
         setDownloadingLeads(false);
         return;
       }
 
-      // Build slug filter for PostgREST — in.(slug1,slug2,...)
-      const slugFilter = slugs.map(s => `car_url.ilike.*${s}*`).join(',');
-
-      // Fetch leads from OLD Supabase — filter by date
+      // Fetch all leads from OLD Supabase within date range
       const res = await fetch(
         `${OLD_SUPABASE_URL}/rest/v1/sellsheet_contacts?created_at=gte.${fromISO}&order=created_at.desc&select=*`,
         { headers: { "apikey": OLD_ANON_KEY, "Authorization": `Bearer ${OLD_ANON_KEY}` } }
       );
       const allLeads = await res.json();
 
-      // Filter to only this dealer's listings by matching slug in car_url
+      // Exclude test/dealer emails and filter to this dealer's listings
+      const excludeEmails = ["pe@mothers.co.nz", "pemothersnz@gmail.com", dealer.email].filter(Boolean).map(e => e.toLowerCase());
+
       const dealerLeads = (allLeads || []).filter(lead => {
         if (!lead.car_url) return false;
-        return slugs.some(slug => lead.car_url.includes(slug));
+        // Exclude dealer/test emails
+        if (excludeEmails.includes((lead.email || "").toLowerCase())) return false;
+        // Match by slug OR dealer code in URL
+        return slugs.some(slug => lead.car_url.includes(slug)) || lead.car_url.includes(`/${dealerCode}-`);
       });
 
       if (dealerLeads.length === 0) {
-        alert(`No leads found in the last ${leadDays} days.`);
+        alert(`No leads found in the last ${leadDays} days.\n\n(Your own test emails are excluded from the report)`);
         setDownloadingLeads(false);
         return;
       }
@@ -88,34 +92,33 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
       // Build CSV
       const headers = ["Name", "Email", "Listing", "Reference", "Date"];
       const rows = dealerLeads.map(lead => {
-        // Find matching listing for this lead
         const matchedListing = listings.find(l => lead.car_url && lead.car_url.includes(l.slug));
         const listingName = matchedListing
-          ? (matchedListing.listing_type === 'property'
+          ? (matchedListing.listing_type === "property"
               ? matchedListing.address
-              : `${matchedListing.year || ''} ${matchedListing.make} ${matchedListing.model}`.trim())
-          : (lead.car_name || '');
+              : `${matchedListing.year || ""} ${matchedListing.make} ${matchedListing.model}`.trim())
+          : (lead.car_name || "");
         const reference = matchedListing
-          ? (matchedListing.listing_type === 'property'
+          ? (matchedListing.listing_type === "property"
               ? matchedListing.property_id
               : `Stock #${matchedListing.stock_number}`)
-          : '';
+          : "";
         const date = lead.created_at
-          ? new Date(lead.created_at).toLocaleDateString('en-NZ', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-          : '';
+          ? new Date(lead.created_at).toLocaleDateString("en-NZ", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+          : "";
         return [
-          `"${lead.name || ''}"`,
-          `"${lead.email || ''}"`,
+          `"${lead.name || ""}"`,
+          `"${lead.email || ""}"`,
           `"${listingName}"`,
           `"${reference}"`,
           `"${date}"`
-        ].join(',');
+        ].join(",");
       });
 
-      const csv = [headers.join(','), ...rows].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv' });
+      const csv = [headers.join(","), ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `${dealer.code}-leads-last-${leadDays}-days.csv`;
       a.click();
