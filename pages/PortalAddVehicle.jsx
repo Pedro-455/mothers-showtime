@@ -24,6 +24,7 @@ export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListin
   const [finance, setFinance] = useState(editListing?.finance || "");
   const [description, setDescription] = useState(editListing?.description || "");
   const [features, setFeatures] = useState(parseFeatures(editListing?.features));
+  const [listingUrl, setListingUrl] = useState(editListing?.listing_url || '');
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(editListing?.image_url || null);
   const [saving, setSaving] = useState(false);
@@ -74,6 +75,7 @@ export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListin
         features: features,
         image_url: imageUrl,
         published: publish,
+        listing_url: listingUrl || null,
       };
 
       let res;
@@ -160,6 +162,9 @@ export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListin
 
                 <label style={s.label}>Finance</label>
                 <input style={s.input} placeholder="e.g. From $210/week with 10% deposit" value={finance} onChange={e => setFinance(e.target.value)} />
+
+                <label style={s.label}>Dealer Listing URL <span style={{ fontWeight: 'normal', color: '#aaa' }}>(optional — link to your website or TradeMe listing)</span></label>
+                <input style={s.input} placeholder="e.g. https://www.aucklandharley.co.nz/bikes/23270" value={listingUrl} onChange={e => setListingUrl(e.target.value)} />
               </div>
             </div>
 
