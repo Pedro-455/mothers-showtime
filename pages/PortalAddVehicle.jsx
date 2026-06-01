@@ -37,7 +37,7 @@ export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListin
   }
 
   async function uploadImage(file, slug) {
-    const ext = file.name.split('.').pop();
+    const ext = file.name.split('.').pop().toLowerCase();
     const path = `${slug}.${ext}`;
     const res = await fetch(`${LINQR_SUPABASE_URL}/storage/v1/object/vehicle-images/${path}`, {
       method: "PUT",
@@ -61,7 +61,7 @@ export default function PortalAddVehicle({ dealer, onBack, onSuccess, editListin
     setSaving(true);
     setError("");
     try {
-      const slug = `${dealer.code.toLowerCase()}-${stockNumber}`;
+      const slug = `${dealer.code.toLowerCase()}-${stockNumber.toLowerCase()}`;
       let imageUrl = editListing?.image_url || null;
       if (imageFile) imageUrl = await uploadImage(imageFile, slug);
 
