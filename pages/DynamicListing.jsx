@@ -173,7 +173,7 @@ function PropertyListing({ listing, dealer, slug }) {
 
         {/* EMAIL CAPTURE */}
         <div style={{ background: "white", borderRadius: 10, padding: 20, marginBottom: 16, border: `2px solid ${brandColour}` }}>
-          <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#111" }}>📋 Request More Information</h3>
+          <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#111" }}>✉️ Send Me This Property</h3>
           <p style={{ margin: "0 0 16px", fontSize: 13, color: "#666" }}>Send yourself this property profile</p>
           {sent ? (
             <div style={{ textAlign: "center", padding: 20, color: "#1B6157", fontWeight: "bold" }}>✅ Sent! Check your inbox.</div>
