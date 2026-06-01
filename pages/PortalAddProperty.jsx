@@ -44,7 +44,7 @@ export default function PortalAddProperty({ dealer, onBack, onSuccess, editListi
       let imageUrl = editListing?.image_url || null;
 
       if (imageFile) {
-        const ext = imageFile.name.split('.').pop();
+        const ext = imageFile.name.split('.').pop().toLowerCase();
         const path = `${slug}.${ext}`;
         const uploadRes = await fetch(`${LINQR_URL}/storage/v1/object/vehicle-images/${path}`, {
           method: 'PUT',
