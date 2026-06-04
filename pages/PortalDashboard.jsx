@@ -61,16 +61,23 @@ function parseCSV(text) {
 // Map AHD CSV row to LINQR listing fields
 function mapCSVToListing(row, dealerId) {
   const stockNum = (row.stock_number || "").toString().toLowerCase().trim();
-  const make = (row.make || "Harley-Davidson").trim();
-  const model = (row.model_name || row.model_code || "").trim();
+  const make = (row.make || "").trim();
+  const modelName = (row.model_name || "").trim();
+  const modelCode = (row.model_code || "").trim();
+  const model = modelName || modelCode;
   const year = (row.year || "").toString().trim();
   const colour = (row.colour || "").trim();
-  const price = row.price ? `$${Number(row.price).toLocaleString("en-NZ")} ${row.orc_status || ""}`.trim() : "";
+  const orcRaw = (row.orc_status || "").replace(/#NAME?/g, "").trim();
+  const orc = orcRaw === "+ORC" ? "+ORC" : orcRaw;
+  const priceNum = row.price ? Number(row.price) : null;
+  const price = priceNum ? `$${priceNum.toLocaleString("en-NZ")} ${orc}`.trim() : "";
+  const financePerWeek = row.price_per_week ? Number(row.price_per_week) : null;
+  const keyPoints = (row.key_points || "").replace(/^[\s\-]+/, "").trim();
   const features = [
     row.condition ? `Condition: ${row.condition}` : null,
     colour ? `Colour: ${colour}` : null,
-    row.price_per_week ? `Finance from $${Number(row.price_per_week).toFixed(2)}/week` : null,
-    row.key_points ? row.key_points : null,
+    financePerWeek ? `Finance from $${financePerWeek.toFixed(2)}/week` : null,
+    keyPoints ? keyPoints : null,
   ].filter(Boolean).join("\n");
 
   return {
@@ -81,6 +88,7 @@ function mapCSVToListing(row, dealerId) {
     year,
     make,
     model,
+    model_code: modelCode || null,
     colour,
     price,
     features,
@@ -194,6 +202,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
           if (existing.features !== mapped.features) changed.push(`specs updated`);
           if (existing.image_url !== mapped.image_url) changed.push(`image updated`);
           if (existing.listing_url !== mapped.listing_url) changed.push(`listing URL updated`);
+          if (existing.model_code !== mapped.model_code) changed.push(`model code updated`);
 
           if (changed.length > 0) {
             // UPDATE existing listing
