@@ -1,5 +1,5 @@
 // © 2026 LINQR — linqr.global — All Rights Reserved
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const LINQR_SUPABASE_URL = "https://odnjkxgsgevuvjutqdmi.supabase.co";
 const LINQR_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kbmpreGdzZ2V2dXZqdXRxZG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxOTY0NzksImV4cCI6MjA5NTc3MjQ3OX0.tuf7P4I1xTNUMqnNLBkxAfVi-Ny4vjlWQzIX3AgTFoE";
@@ -7,11 +7,67 @@ const LINQR_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 const OLD_SUPABASE_URL = "https://sfymjnjpqvgtoxofndzx.supabase.co";
 const OLD_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeW1qbmpwcXZndG94b2ZuZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzI1MTAsImV4cCI6MjA3MzE0ODUxMH0.RqBItIZ-Iz_XhKcJNsJSR6e3n5jxW_YKHWGHO5j1z2c";
 
+// Parse a CSV string into array of objects
+function parseCSV(text) {
+  const lines = text.trim().split("\n");
+  const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+  return lines.slice(1).map(line => {
+    // Handle quoted fields with commas inside
+    const values = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQuotes = !inQuotes; }
+      else if (line[i] === "," && !inQuotes) { values.push(current.trim()); current = ""; }
+      else { current += line[i]; }
+    }
+    values.push(current.trim());
+    const row = {};
+    headers.forEach((h, i) => { row[h] = (values[i] || "").replace(/^"|"$/g, ""); });
+    return row;
+  }).filter(row => row.stock_number); // skip blank rows
+}
+
+// Map AHD CSV row to LINQR listing fields
+function mapCSVToListing(row, dealerId) {
+  const stockNum = (row.stock_number || "").toString().toLowerCase().trim();
+  const make = (row.make || "Harley-Davidson").trim();
+  const model = (row.model_name || row.model_code || "").trim();
+  const year = (row.year || "").toString().trim();
+  const colour = (row.colour || "").trim();
+  const price = row.price ? `$${Number(row.price).toLocaleString("en-NZ")} ${row.orc_status || ""}`.trim() : "";
+  const features = [
+    row.condition ? `Condition: ${row.condition}` : null,
+    colour ? `Colour: ${colour}` : null,
+    row.price_per_week ? `Finance from $${Number(row.price_per_week).toFixed(2)}/week` : null,
+    row.key_points ? row.key_points : null,
+  ].filter(Boolean).join("\n");
+
+  return {
+    dealer_id: dealerId,
+    listing_type: "vehicle",
+    stock_number: row.stock_number.toString().trim(),
+    slug: `ahd-${stockNum}`,
+    year,
+    make,
+    model,
+    colour,
+    price,
+    features,
+    image_url: row.image_url || null,
+    listing_url: row.stock_url || null,
+    published: true,
+  };
+}
+
 export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddProperty, onEdit }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [leadDays, setLeadDays] = useState(7);
   const [downloadingLeads, setDownloadingLeads] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => { fetchListings(); }, []);
 
@@ -47,15 +103,106 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
     fetchListings();
   }
 
+  // --- CSV IMPORT ---
+  async function handleCSVUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const text = await file.text();
+      const rows = parseCSV(text);
+
+      if (rows.length === 0) {
+        setImportResult({ error: "No valid rows found in CSV." });
+        setImporting(false);
+        return;
+      }
+
+      // Fetch existing listings for this dealer
+      const existingRes = await fetch(
+        `${LINQR_SUPABASE_URL}/rest/v1/listings?dealer_id=eq.${dealer.id}&select=*`,
+        { headers: { "apikey": LINQR_ANON_KEY, "Authorization": `Bearer ${LINQR_ANON_KEY}` } }
+      );
+      const existing = await existingRes.json();
+
+      // Build lookup map: stock_number -> existing listing
+      const existingByStock = {};
+      (existing || []).forEach(l => {
+        if (l.stock_number) existingByStock[l.stock_number.toString().trim()] = l;
+      });
+
+      let added = 0, updated = 0, unchanged = 0;
+      const updateDetails = [];
+
+      for (const row of rows) {
+        const mapped = mapCSVToListing(row, dealer.id);
+        const stockNum = row.stock_number.toString().trim();
+        const existing = existingByStock[stockNum];
+
+        if (!existing) {
+          // INSERT new listing
+          await fetch(`${LINQR_SUPABASE_URL}/rest/v1/listings`, {
+            method: "POST",
+            headers: {
+              "apikey": LINQR_ANON_KEY,
+              "Authorization": `Bearer ${LINQR_ANON_KEY}`,
+              "Content-Type": "application/json",
+              "Prefer": "return=minimal"
+            },
+            body: JSON.stringify(mapped)
+          });
+          added++;
+        } else {
+          // Compare key fields — has anything changed?
+          const changed = [];
+          if (existing.price !== mapped.price) changed.push(`price: ${existing.price} → ${mapped.price}`);
+          if (existing.colour !== mapped.colour) changed.push(`colour: ${existing.colour} → ${mapped.colour}`);
+          if (existing.model !== mapped.model) changed.push(`model: ${existing.model} → ${mapped.model}`);
+          if (existing.year !== mapped.year) changed.push(`year: ${existing.year} → ${mapped.year}`);
+          if (existing.features !== mapped.features) changed.push(`specs updated`);
+          if (existing.image_url !== mapped.image_url) changed.push(`image updated`);
+          if (existing.listing_url !== mapped.listing_url) changed.push(`listing URL updated`);
+
+          if (changed.length > 0) {
+            // UPDATE existing listing
+            await fetch(`${LINQR_SUPABASE_URL}/rest/v1/listings?id=eq.${existing.id}`, {
+              method: "PATCH",
+              headers: {
+                "apikey": LINQR_ANON_KEY,
+                "Authorization": `Bearer ${LINQR_ANON_KEY}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(mapped)
+            });
+            updated++;
+            updateDetails.push(`Stock #${stockNum} — ${changed.join(", ")}`);
+          } else {
+            unchanged++;
+          }
+        }
+      }
+
+      await fetchListings();
+      setImportResult({ added, updated, unchanged, updateDetails });
+
+    } catch (err) {
+      console.error(err);
+      setImportResult({ error: "Import failed: " + err.message });
+    } finally {
+      setImporting(false);
+      // Reset file input so same file can be re-uploaded
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   async function downloadLeads() {
     setDownloadingLeads(true);
     try {
-      // Build date filter
       const fromDate = new Date();
       fromDate.setDate(fromDate.getDate() - leadDays);
       const fromISO = fromDate.toISOString();
-
-      // Get all slugs for this dealer — also get dealer code for broader matching
       const slugs = listings.map(l => l.slug);
       const dealerCode = dealer.code.toLowerCase();
 
@@ -65,21 +212,17 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
         return;
       }
 
-      // Fetch all leads from OLD Supabase within date range
       const res = await fetch(
         `${OLD_SUPABASE_URL}/rest/v1/sellsheet_contacts?created_at=gte.${fromISO}&order=created_at.desc&select=*`,
         { headers: { "apikey": OLD_ANON_KEY, "Authorization": `Bearer ${OLD_ANON_KEY}` } }
       );
       const allLeads = await res.json();
 
-      // Exclude test/dealer emails and filter to this dealer's listings
       const excludeEmails = ["pe@mothers.co.nz", "pemothersnz@gmail.com", dealer.email].filter(Boolean).map(e => e.toLowerCase());
 
       const dealerLeads = (allLeads || []).filter(lead => {
         if (!lead.car_url) return false;
-        // Exclude dealer/test emails
         if (excludeEmails.includes((lead.email || "").toLowerCase())) return false;
-        // Match by slug OR dealer code in URL
         return slugs.some(slug => lead.car_url.includes(slug)) || lead.car_url.includes(`/${dealerCode}-`);
       });
 
@@ -89,7 +232,6 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
         return;
       }
 
-      // Build CSV
       const headers = ["Name", "Email", "Listing", "Reference", "Date"];
       const rows = dealerLeads.map(lead => {
         const matchedListing = listings.find(l => lead.car_url && lead.car_url.includes(l.slug));
@@ -106,13 +248,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
         const date = lead.created_at
           ? new Date(lead.created_at).toLocaleDateString("en-NZ", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
           : "";
-        return [
-          `"${lead.name || ""}"`,
-          `"${lead.email || ""}"`,
-          `"${listingName}"`,
-          `"${reference}"`,
-          `"${date}"`
-        ].join(",");
+        return [`"${lead.name || ""}"`, `"${lead.email || ""}"`, `"${listingName}"`, `"${reference}"`, `"${date}"`].join(",");
       });
 
       const csv = [headers.join(","), ...rows].join("\n");
@@ -213,6 +349,48 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
           </button>
           <span style={{ fontSize: 12, color: '#aaa', fontFamily: 'Georgia, serif' }}>Name · Email · Listing · Reference · Date</span>
         </div>
+
+        {/* IMPORT STOCK BAR */}
+        <div style={{ background: '#f9f9f9', borderBottom: '1px solid #eee', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#333', fontFamily: 'Georgia, serif' }}>📂 Import Stock</div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            style={{ display: 'none' }}
+            onChange={handleCSVUpload}
+          />
+          <button
+            onClick={() => fileInputRef.current && fileInputRef.current.click()}
+            disabled={importing}
+            style={{ background: importing ? '#aaa' : '#111', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: importing ? 'not-allowed' : 'pointer', fontFamily: 'Georgia, serif' }}
+          >
+            {importing ? 'Importing...' : '⬆️ Upload CSV'}
+          </button>
+          <span style={{ fontSize: 12, color: '#aaa', fontFamily: 'Georgia, serif' }}>Upload your stock CSV — new listings added, changes updated, unchanged skipped</span>
+        </div>
+
+        {/* IMPORT RESULT */}
+        {importResult && (
+          <div style={{ background: importResult.error ? '#fff3f3' : '#f0fff4', borderBottom: '1px solid #eee', padding: '16px 24px' }}>
+            {importResult.error ? (
+              <p style={{ color: '#cc0000', fontSize: 13, margin: 0, fontFamily: 'Georgia, serif' }}>⚠️ {importResult.error}</p>
+            ) : (
+              <>
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#111', margin: '0 0 6px', fontFamily: 'Georgia, serif' }}>
+                  ✅ Import complete — {importResult.added} added · {importResult.updated} updated · {importResult.unchanged} unchanged
+                </p>
+                {importResult.updateDetails.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    {importResult.updateDetails.map((d, i) => (
+                      <p key={i} style={{ fontSize: 12, color: '#555', margin: '2px 0', fontFamily: 'Georgia, serif' }}>↻ {d}</p>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* CONTENT */}
         <div style={styles.content}>
