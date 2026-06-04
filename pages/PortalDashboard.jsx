@@ -9,10 +9,8 @@ const OLD_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Parse a CSV string into array of objects — handles multi-line quoted fields and #NAME? corruption
 function parseCSV(text) {
-  // Normalise line endings
   const normalised = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-  // Tokenise the entire file character by character so multi-line quoted fields work correctly
   function tokenise(str) {
     const rows = [];
     let row = [];
@@ -21,7 +19,6 @@ function parseCSV(text) {
     for (let i = 0; i < str.length; i++) {
       const ch = str[i];
       if (ch === '"') {
-        // Escaped quote inside quoted field
         if (inQuotes && str[i + 1] === '"') { field += '"'; i++; }
         else { inQuotes = !inQuotes; }
       } else if (ch === "," && !inQuotes) {
@@ -36,7 +33,6 @@ function parseCSV(text) {
         field += ch;
       }
     }
-    // Last field/row
     row.push(field.trim());
     if (row.some(v => v !== "")) rows.push(row);
     return rows;
@@ -50,12 +46,11 @@ function parseCSV(text) {
   return rows.slice(1).map(values => {
     const row = {};
     headers.forEach((h, i) => {
-      // Strip surrounding quotes and clean up Excel #NAME? corruption
       let val = (values[i] || "").replace(/^"|"$/g, "").replace(/#NAME\?/g, "").trim();
       row[h] = val;
     });
     return row;
-  }).filter(row => row.stock_number && row.stock_number.match(/^\d+$/)); // only rows with numeric stock numbers
+  }).filter(row => row.stock_number && row.stock_number.match(/^\d+$/));
 }
 
 // Map AHD CSV row to LINQR listing fields
@@ -110,6 +105,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
   const [downloadingLeads, setDownloadingLeads] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [stockSearch, setStockSearch] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => { fetchListings(); }, []);
@@ -163,14 +159,12 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
         return;
       }
 
-      // Fetch existing listings for this dealer
       const existingRes = await fetch(
         `${LINQR_SUPABASE_URL}/rest/v1/listings?dealer_id=eq.${dealer.id}&select=*`,
         { headers: { "apikey": LINQR_ANON_KEY, "Authorization": `Bearer ${LINQR_ANON_KEY}` } }
       );
       const existing = await existingRes.json();
 
-      // Build lookup map: stock_number -> existing listing
       const existingByStock = {};
       (existing || []).forEach(l => {
         if (l.stock_number) existingByStock[l.stock_number.toString().trim()] = l;
@@ -185,7 +179,6 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
         const existing = existingByStock[stockNum];
 
         if (!existing) {
-          // INSERT new listing
           await fetch(`${LINQR_SUPABASE_URL}/rest/v1/listings`, {
             method: "POST",
             headers: {
@@ -198,7 +191,6 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
           });
           added++;
         } else {
-          // Compare key fields — has anything changed?
           const changed = [];
           if (existing.price !== mapped.price) changed.push(`price: ${existing.price} → ${mapped.price}`);
           if (existing.colour !== mapped.colour) changed.push(`colour: ${existing.colour} → ${mapped.colour}`);
@@ -212,7 +204,6 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
           if (existing.odometer !== mapped.odometer) changed.push(`odometer: ${existing.odometer} → ${mapped.odometer}`);
 
           if (changed.length > 0) {
-            // UPDATE existing listing
             await fetch(`${LINQR_SUPABASE_URL}/rest/v1/listings?id=eq.${existing.id}`, {
               method: "PATCH",
               headers: {
@@ -238,7 +229,6 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
       setImportResult({ error: "Import failed: " + err.message });
     } finally {
       setImporting(false);
-      // Reset file input so same file can be re-uploaded
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
@@ -292,7 +282,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
               : `Stock #${matchedListing.stock_number}`)
           : "";
         const date = lead.created_at
-          ? new Date(lead.created_at).toLocaleDateString("en-NZ", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+          ? new Date(lead.created_at).toLocaleDateString("en-NZ", { day: "2-digit", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
           : "";
         return [`"${lead.name || ""}"`, `"${lead.email || ""}"`, `"${listingName}"`, `"${reference}"`, `"${date}"`].join(",");
       });
@@ -318,6 +308,11 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
   const isPropertyDealer = dealer?.dealer_type === 'property';
   const brandColour = dealer?.brand_colour || '#1B6157';
   const headerTextColour = isRayWhite ? '#000000' : '#ffffff';
+
+  // Filter listings by stock number search
+  const filteredListings = stockSearch.trim()
+    ? listings.filter(l => l.stock_number && l.stock_number.toString().includes(stockSearch.trim()))
+    : listings;
 
   const AddButtons = () => (
     <div style={styles.addButtons}>
@@ -445,6 +440,39 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
             <AddButtons />
           </div>
 
+          {/* STOCK SEARCH */}
+          <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input
+              type="text"
+              placeholder="🔍  Search by stock number..."
+              value={stockSearch}
+              onChange={e => setStockSearch(e.target.value)}
+              style={{
+                border: '1px solid #ddd',
+                borderRadius: 8,
+                padding: '10px 14px',
+                fontSize: 13,
+                fontFamily: 'Georgia, serif',
+                color: '#333',
+                width: 260,
+                outline: 'none',
+              }}
+            />
+            {stockSearch && (
+              <button
+                onClick={() => setStockSearch("")}
+                style={{ background: 'none', border: 'none', fontSize: 13, color: '#888', cursor: 'pointer', fontFamily: 'Georgia, serif' }}
+              >
+                ✕ Clear
+              </button>
+            )}
+            {stockSearch && (
+              <span style={{ fontSize: 13, color: '#888', fontFamily: 'Georgia, serif' }}>
+                {filteredListings.length} result{filteredListings.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
           {loading && <p style={styles.loadingText}>Loading your listings...</p>}
 
           {!loading && listings.length === 0 && (
@@ -456,7 +484,13 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
             </div>
           )}
 
-          {listings.map(listing => (
+          {!loading && stockSearch && filteredListings.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 24px', color: '#888', fontFamily: 'Georgia, serif', fontSize: 14 }}>
+              No listing found for stock number "{stockSearch}"
+            </div>
+          )}
+
+          {filteredListings.map(listing => (
             <div key={listing.id} style={styles.listingCard}>
               <div style={styles.listingLeft}>
                 {listing.image_url
