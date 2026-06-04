@@ -76,9 +76,11 @@ function mapCSVToListing(row, dealerId) {
   const features = [
     row.condition ? `Condition: ${row.condition}` : null,
     colour ? `Colour: ${colour}` : null,
-
     keyPoints ? keyPoints : null,
   ].filter(Boolean).join("\n");
+
+  const engineCC = row.engine_cc ? row.engine_cc.toString().trim() : null;
+  const kms = row.kms ? Number(row.kms) : null;
 
   return {
     dealer_id: dealerId,
@@ -91,6 +93,8 @@ function mapCSVToListing(row, dealerId) {
     model_code: modelCode || null,
     colour,
     price,
+    engine: engineCC ? `${engineCC}cc` : null,
+    odometer: kms ? `${kms.toLocaleString("en-NZ")} km` : null,
     features,
     image_url: row.image_url || null,
     finance: financePerWeek ? `From $${financePerWeek.toFixed(2)}/week` : null,
@@ -204,6 +208,8 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
           if (existing.image_url !== mapped.image_url) changed.push(`image updated`);
           if (existing.listing_url !== mapped.listing_url) changed.push(`listing URL updated`);
           if (existing.model_code !== mapped.model_code) changed.push(`model code updated`);
+          if (existing.engine !== mapped.engine) changed.push(`engine: ${existing.engine} → ${mapped.engine}`);
+          if (existing.odometer !== mapped.odometer) changed.push(`odometer: ${existing.odometer} → ${mapped.odometer}`);
 
           if (changed.length > 0) {
             // UPDATE existing listing
@@ -467,7 +473,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
                 <p style={styles.listingMeta}>
                   {listing.listing_type === 'property'
                     ? `${listing.suburb || ''} · ${listing.sale_method || ''} · ID: ${listing.property_id || ''}`
-                    : [listing.colour, listing.engine, `Stock #${listing.stock_number}`].filter(Boolean).join(' · ')}
+                    : [listing.colour, listing.engine, listing.odometer, `Stock #${listing.stock_number}`].filter(Boolean).join(' · ')}
                 </p>
                 <p style={{ ...styles.listingPrice, color: brandColour }}>{listing.price}</p>
                 <div style={styles.listingUrl}>
