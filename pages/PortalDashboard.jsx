@@ -467,7 +467,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
                 <p style={styles.listingMeta}>
                   {listing.listing_type === 'property'
                     ? `${listing.suburb || ''} · ${listing.sale_method || ''} · ID: ${listing.property_id || ''}`
-                    : `${listing.colour} · ${listing.engine} · Stock #${listing.stock_number}`}
+                    : [listing.colour, listing.engine, `Stock #${listing.stock_number}`].filter(Boolean).join(' · ')}
                 </p>
                 <p style={{ ...styles.listingPrice, color: brandColour }}>{listing.price}</p>
                 <div style={styles.listingUrl}>
