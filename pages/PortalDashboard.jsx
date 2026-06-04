@@ -76,7 +76,7 @@ function mapCSVToListing(row, dealerId) {
   const features = [
     row.condition ? `Condition: ${row.condition}` : null,
     colour ? `Colour: ${colour}` : null,
-    financePerWeek ? `Finance from $${financePerWeek.toFixed(2)}/week` : null,
+
     keyPoints ? keyPoints : null,
   ].filter(Boolean).join("\n");
 
@@ -93,6 +93,7 @@ function mapCSVToListing(row, dealerId) {
     price,
     features,
     image_url: row.image_url || null,
+    finance: financePerWeek ? `From $${financePerWeek.toFixed(2)}/week` : null,
     listing_url: row.stock_url || null,
     published: true,
   };
