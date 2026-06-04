@@ -7,25 +7,55 @@ const LINQR_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 const OLD_SUPABASE_URL = "https://sfymjnjpqvgtoxofndzx.supabase.co";
 const OLD_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeW1qbmpwcXZndG94b2ZuZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzI1MTAsImV4cCI6MjA3MzE0ODUxMH0.RqBItIZ-Iz_XhKcJNsJSR6e3n5jxW_YKHWGHO5j1z2c";
 
-// Parse a CSV string into array of objects
+// Parse a CSV string into array of objects — handles multi-line quoted fields and #NAME? corruption
 function parseCSV(text) {
-  const lines = text.trim().split("\n");
-  const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
-  return lines.slice(1).map(line => {
-    // Handle quoted fields with commas inside
-    const values = [];
-    let current = "";
+  // Normalise line endings
+  const normalised = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  // Tokenise the entire file character by character so multi-line quoted fields work correctly
+  function tokenise(str) {
+    const rows = [];
+    let row = [];
+    let field = "";
     let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      if (line[i] === '"') { inQuotes = !inQuotes; }
-      else if (line[i] === "," && !inQuotes) { values.push(current.trim()); current = ""; }
-      else { current += line[i]; }
+    for (let i = 0; i < str.length; i++) {
+      const ch = str[i];
+      if (ch === '"') {
+        // Escaped quote inside quoted field
+        if (inQuotes && str[i + 1] === '"') { field += '"'; i++; }
+        else { inQuotes = !inQuotes; }
+      } else if (ch === "," && !inQuotes) {
+        row.push(field.trim());
+        field = "";
+      } else if (ch === "\n" && !inQuotes) {
+        row.push(field.trim());
+        if (row.some(v => v !== "")) rows.push(row);
+        row = [];
+        field = "";
+      } else {
+        field += ch;
+      }
     }
-    values.push(current.trim());
+    // Last field/row
+    row.push(field.trim());
+    if (row.some(v => v !== "")) rows.push(row);
+    return rows;
+  }
+
+  const rows = tokenise(normalised);
+  if (rows.length < 2) return [];
+
+  const headers = rows[0].map(h => h.replace(/^"|"$/g, "").trim());
+
+  return rows.slice(1).map(values => {
     const row = {};
-    headers.forEach((h, i) => { row[h] = (values[i] || "").replace(/^"|"$/g, ""); });
+    headers.forEach((h, i) => {
+      // Strip surrounding quotes and clean up Excel #NAME? corruption
+      let val = (values[i] || "").replace(/^"|"$/g, "").replace(/#NAME\?/g, "").trim();
+      row[h] = val;
+    });
     return row;
-  }).filter(row => row.stock_number); // skip blank rows
+  }).filter(row => row.stock_number && row.stock_number.match(/^\d+$/)); // only rows with numeric stock numbers
 }
 
 // Map AHD CSV row to LINQR listing fields
