@@ -176,64 +176,58 @@ async function generateLabelPDF(listings, dealer) {
     const x = marginLeft + col * labelW;
     const y = marginTop + row * labelH;
 
-    // ── ROTATED PORTRAIT LAYOUT ──
-    // Physical label: 99.1mm wide × 67.7mm tall on the page
-    // Design is drawn portrait (67.7mm wide × 99.1mm tall) then rotated 90°
-    // so when peeled and rotated on the hanging card it reads perfectly upright.
-    //
-    // We achieve rotation by using jsPDF's coordinate transform:
-    // draw everything as if the label is portrait (w=labelH, h=labelW)
-    // with origin at bottom-left of the physical label cell.
+    // ── ROTATED PORTRAIT LAYOUT — manual coordinate maths, no matrix transform ──
+    // The physical label cell is labelW(99.1) wide × labelH(67.7) tall on the page.
+    // We draw our portrait design (dW=67.7 wide × dH=99.1 tall) rotated 90° CW
+    // by converting portrait design coords (dx from left, dy from top) to page coords:
+    //   pageX = x + dy * (labelW / dH)   — scale dy along page width
+    //   pageY = y + labelH - dx * (labelH / dW)  — flip dx along page height
+    // Since dW == labelH and dH == labelW the scale factors are both 1.0, simplifying to:
+    //   pageX = x + dy
+    //   pageY = y + labelH - dx
+    // Rectangles: portrait rect(dx, dy, rw, rh) → page rect(x+dy, y+labelH-dx-rw, rh, rw)
 
-    const dW = labelH;   // design width  = 67.7mm
-    const dH = labelW;   // design height = 99.1mm
+    const dW = labelH;   // 67.7mm — portrait design width
+    const dH = labelW;   // 99.1mm — portrait design height
 
-    // Origin for rotated drawing — bottom-left corner of label cell
-    const ox = x;
-    const oy = y + labelH;
+    // Shorthand converters
+    const rx = (dy) => x + dy;
+    const ry = (dx, rw) => y + labelH - dx - rw;
 
-    // Helper: convert portrait design coords (dx, dy) to page coords
-    // Rotation 90° CW: pageX = ox + dy, pageY = oy - dx
-    function px(dx, dy) { return ox + dy; }
-    function py(dx, dy) { return oy - dx; }
-
-    // For rectangles we need to use jsPDF transform — use save/restore
-    doc.saveGraphicsState();
-    // Translate to bottom-left of label, rotate 90° CW
-    doc.setCurrentTransformationMatrix(doc.Matrix(0, -1, 1, 0, ox, oy));
-
-    // Now draw everything in portrait coords (0,0) = top-left of design
     const headerH = 12;
     const qrSize = 52;
 
     // ── LABEL BACKGROUND ──
     doc.setFillColor(...WHITE);
-    doc.rect(0, 0, dW, dH, 'F');
+    doc.rect(rx(0), y, labelW, labelH, 'F');
 
-    // ── BLACK HEADER BAR ──
+    // ── BLACK HEADER BAR — portrait top strip, now on the right side ──
+    // portrait rect(0, 0, dW, headerH) → page rect(x, y+labelH-dW, headerH, dW)
     doc.setFillColor(...BLACK);
-    doc.rect(0, 0, dW, headerH, 'F');
+    doc.rect(x, y, headerH, labelH, 'F');
 
-    // ── GREEN accent stripe at top (3mm) ──
+    // ── GREEN accent stripe (3mm) — far left of black bar ──
     doc.setFillColor(...GREEN);
-    doc.rect(0, 0, dW, 3, 'F');
+    doc.rect(x, y, 3, labelH, 'F');
 
-    // ── TAGLINE ──
+    // ── TAGLINE — rotated 90° text, reads bottom-to-top up the black bar ──
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(...WHITE);
-    doc.text('Scan Me  ·  Save Me  ·  Share Me', dW / 2, 9, { align: 'center' });
+    // jsPDF angle: degrees CCW. To read bottom-to-top, use angle=90
+    doc.text('Scan Me  ·  Save Me  ·  Share Me', x + 9, y + labelH - 4, { angle: 90 });
 
-    // ── QR CODE ──
+    // ── QR CODE — centred in the remaining space ──
     const qrUrl = `https://linqr.global/${listing.slug}`;
     const qrDataUrl = await getQRDataURL(qrUrl);
-    const qrX = (dW - qrSize) / 2;
-    const qrY = headerH + 2;
+    // QR sits in the area from x+headerH to x+headerH+qrSize, centred vertically
+    const qrX = x + headerH + 3;
+    const qrY = y + (labelH - qrSize) / 2;
     if (qrDataUrl) {
       doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
     }
 
-    // ── LINQR logo overlay ──
+    // ── LINQR logo overlay in centre of QR ──
     try {
       const logoW = qrSize * 0.28;
       const logoH = qrSize * 0.11;
@@ -263,44 +257,50 @@ async function generateLabelPDF(listings, dealer) {
       }
     } catch(e) { /* logo overlay optional */ }
 
-    // ── GREEN divider ──
-    const afterQR = qrY + qrSize + 2;
+    // ── GREEN vertical divider between QR and text ──
+    const textX = qrX + qrSize + 3;
     doc.setDrawColor(...GREEN);
     doc.setLineWidth(0.4);
-    doc.line(8, afterQR, dW - 8, afterQR);
+    doc.line(textX - 1, y + 4, textX - 1, y + labelH - 4);
 
-    // ── Dealer name ──
+    // ── TEXT ZONE — right of QR ──
+    const textW = labelW - headerH - qrSize - 10;
+    const midY = y + labelH / 2;
+
+    // Dealer name
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setTextColor(...BLACK);
-    doc.text(dealer.name || '', dW / 2, afterQR + 5, { align: 'center' });
+    doc.text(dealer.name || '', textX, midY - 10, { maxWidth: textW });
 
-    // ── Vehicle name ──
+    // Thin green rule under dealer name
+    doc.setDrawColor(...GREEN);
+    doc.setLineWidth(0.3);
+    doc.line(textX, midY - 7, textX + textW, midY - 7);
+
+    // Vehicle name
     const vehicleName = listing.listing_type === 'property'
       ? (listing.address || '')
       : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(...GREEN);
-    doc.text(vehicleName, dW / 2, afterQR + 11, { align: 'center', maxWidth: dW - 8 });
+    doc.text(vehicleName, textX, midY - 1, { maxWidth: textW });
 
-    // ── Stock number ──
+    // Stock number
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(...MIDGREY);
     const stockLine = listing.listing_type === 'property'
       ? `ID: ${listing.property_id || ''}`
       : `Stock #${listing.stock_number}`;
-    doc.text(stockLine, dW / 2, afterQR + 17, { align: 'center' });
+    doc.text(stockLine, textX, midY + 7, { maxWidth: textW });
 
-    // ── Copyright ──
+    // Copyright
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5);
     doc.setTextColor(...MIDGREY);
-    doc.text('© LINQR 2026  ·  linqr.global', dW / 2, dH - 2, { align: 'center' });
-
-    // Restore transform for next label
-    doc.restoreGraphicsState();
+    doc.text('© LINQR 2026  ·  linqr.global', textX, y + labelH - 2, { maxWidth: textW });
 
     labelIndex++;
   }
