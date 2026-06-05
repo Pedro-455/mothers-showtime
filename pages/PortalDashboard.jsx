@@ -97,7 +97,7 @@ async function generateLabelPDF(listings, dealer) {
       div.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
       document.body.appendChild(div);
       new window.QRCode(div, {
-        text: url, width: 512, height: 512,
+        text: url, width: 256, height: 256,
         colorDark: '#1D6B4A', colorLight: '#ffffff',
         correctLevel: window.QRCode.CorrectLevel.H
       });
@@ -106,16 +106,19 @@ async function generateLabelPDF(listings, dealer) {
         const dataUrl = el ? (el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src) : '';
         document.body.removeChild(div);
         resolve(dataUrl);
-      }, 400);
+      }, 150);
     });
   }
 
-  // Pre-generate all QR codes
+  // Pre-generate all QR codes with progress update
   const qrDataUrls = [];
   for (let i = 0; i < published.length; i++) {
     const url = `https://linqr.global/${published[i].slug}`;
     const dataUrl = await getQRDataURL(url);
     qrDataUrls.push(dataUrl);
+    try {
+      win.document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#1D6B4A;color:white;font-family:Arial,sans-serif;flex-direction:column;gap:16px;"><h2>⏳ Generating labels...</h2><p style="font-size:18px;">${i + 1} of ${published.length} QR codes</p></div>`;
+    } catch(e) {}
   }
 
   // Build one SVG label using exact locked coordinates
@@ -180,9 +183,8 @@ async function generateLabelPDF(listings, dealer) {
     pages.push(buildSheet(chunk));
   }
 
-  // Write final content to already-open window
-  win.document.open();
-  win.document.write(`<!DOCTYPE html>
+  // Build full HTML string and inject into already-open window
+  const html = `<!DOCTYPE html>
 <html>
 <head>
 <title>${dealer.code} QR Labels</title>
@@ -219,7 +221,9 @@ async function generateLabelPDF(listings, dealer) {
 </div>
 ${pages.map(p => `<div class="page">${p}</div>`).join('\n')}
 </body>
-</html>`);
+</html>`;
+  win.document.open();
+  win.document.write(html);
   win.document.close();
 }
 // ─────────────────────────────────────────────────────────────────────────────
