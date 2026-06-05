@@ -176,52 +176,75 @@ async function generateLabelPDF(listings, dealer) {
     const x = marginLeft + col * labelW;
     const y = marginTop + row * labelH;
 
+    // ── ROTATED PORTRAIT LAYOUT ──
+    // Physical label: 99.1mm wide × 67.7mm tall on the page
+    // Design is drawn portrait (67.7mm wide × 99.1mm tall) then rotated 90°
+    // so when peeled and rotated on the hanging card it reads perfectly upright.
+    //
+    // We achieve rotation by using jsPDF's coordinate transform:
+    // draw everything as if the label is portrait (w=labelH, h=labelW)
+    // with origin at bottom-left of the physical label cell.
+
+    const dW = labelH;   // design width  = 67.7mm
+    const dH = labelW;   // design height = 99.1mm
+
+    // Origin for rotated drawing — bottom-left corner of label cell
+    const ox = x;
+    const oy = y + labelH;
+
+    // Helper: convert portrait design coords (dx, dy) to page coords
+    // Rotation 90° CW: pageX = ox + dy, pageY = oy - dx
+    function px(dx, dy) { return ox + dy; }
+    function py(dx, dy) { return oy - dx; }
+
+    // For rectangles we need to use jsPDF transform — use save/restore
+    doc.saveGraphicsState();
+    // Translate to bottom-left of label, rotate 90° CW
+    doc.setCurrentTransformationMatrix(doc.Matrix(0, -1, 1, 0, ox, oy));
+
+    // Now draw everything in portrait coords (0,0) = top-left of design
+    const headerH = 12;
+    const qrSize = 52;
+
     // ── LABEL BACKGROUND ──
     doc.setFillColor(...WHITE);
-    doc.rect(x, y, labelW, labelH, 'F');
+    doc.rect(0, 0, dW, dH, 'F');
 
     // ── BLACK HEADER BAR ──
-    const headerH = 12;
     doc.setFillColor(...BLACK);
-    doc.rect(x, y, labelW, headerH, 'F');
+    doc.rect(0, 0, dW, headerH, 'F');
 
-    // ── GREEN accent stripe at very top (3mm) ──
+    // ── GREEN accent stripe at top (3mm) ──
     doc.setFillColor(...GREEN);
-    doc.rect(x, y, labelW, 3, 'F');
+    doc.rect(0, 0, dW, 3, 'F');
 
-    // ── TAGLINE on header ──
+    // ── TAGLINE ──
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(...WHITE);
-    doc.text('Scan Me  ·  Save Me  ·  Share Me', x + labelW / 2, y + 8.5, { align: 'center' });
+    doc.text('Scan Me  ·  Save Me  ·  Share Me', dW / 2, 9, { align: 'center' });
 
     // ── QR CODE ──
     const qrUrl = `https://linqr.global/${listing.slug}`;
     const qrDataUrl = await getQRDataURL(qrUrl);
-    const qrSize = 30;
-    const qrX = x + (labelW - qrSize) / 2;
-    const qrY = y + headerH + 3;
+    const qrX = (dW - qrSize) / 2;
+    const qrY = headerH + 2;
     if (qrDataUrl) {
       doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
     }
 
-    // ── LINQR logo overlay in centre of QR ──
-    // Load LINQR logo and draw a green rounded box with the logo centred on the QR
+    // ── LINQR logo overlay ──
     try {
-      // Logo: wider than tall — 10mm x 4mm to match aspect ratio
-      const logoW = 10;
-      const logoH = 4;
+      const logoW = qrSize * 0.28;
+      const logoH = qrSize * 0.11;
       const logoX = qrX + (qrSize - logoW) / 2;
       const logoY = qrY + (qrSize - logoH) / 2;
-      const padX = 1.5, padY = 1.5;
-      // Green background box
+      const padX = 2, padY = 2;
       doc.setFillColor(...GREEN);
       doc.roundedRect(logoX - padX, logoY - padY, logoW + padX * 2, logoH + padY * 2, 1.2, 1.2, 'F');
-      // White border
       doc.setDrawColor(...WHITE);
       doc.setLineWidth(0.5);
       doc.roundedRect(logoX - padX, logoY - padY, logoW + padX * 2, logoH + padY * 2, 1.2, 1.2, 'S');
-      // Logo image
       const logoDataUrl = await new Promise(resolve => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -238,46 +261,46 @@ async function generateLabelPDF(listings, dealer) {
       if (logoDataUrl) {
         doc.addImage(logoDataUrl, 'PNG', logoX, logoY, logoW, logoH);
       }
-    } catch(e) { /* logo overlay optional — skip if fails */ }
+    } catch(e) { /* logo overlay optional */ }
 
-    // ── LINQR branding below QR ──
+    // ── GREEN divider ──
     const afterQR = qrY + qrSize + 2;
-
-    // Green divider line
     doc.setDrawColor(...GREEN);
     doc.setLineWidth(0.4);
-    doc.line(x + 8, afterQR, x + labelW - 8, afterQR);
+    doc.line(8, afterQR, dW - 8, afterQR);
 
-    // Dealer name
+    // ── Dealer name ──
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(8.5);
     doc.setTextColor(...BLACK);
-    const dealerName = dealer.name || '';
-    doc.text(dealerName, x + labelW / 2, afterQR + 4.5, { align: 'center' });
+    doc.text(dealer.name || '', dW / 2, afterQR + 5, { align: 'center' });
 
-    // Vehicle name
+    // ── Vehicle name ──
     const vehicleName = listing.listing_type === 'property'
       ? (listing.address || '')
       : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
+    doc.setFontSize(8);
     doc.setTextColor(...GREEN);
-    doc.text(vehicleName, x + labelW / 2, afterQR + 9.5, { align: 'center', maxWidth: labelW - 8 });
+    doc.text(vehicleName, dW / 2, afterQR + 11, { align: 'center', maxWidth: dW - 8 });
 
-    // Stock number
+    // ── Stock number ──
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.5);
+    doc.setFontSize(7);
     doc.setTextColor(...MIDGREY);
     const stockLine = listing.listing_type === 'property'
       ? `ID: ${listing.property_id || ''}`
       : `Stock #${listing.stock_number}`;
-    doc.text(stockLine, x + labelW / 2, afterQR + 13.5, { align: 'center' });
+    doc.text(stockLine, dW / 2, afterQR + 17, { align: 'center' });
 
-    // Copyright footer
+    // ── Copyright ──
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(4.5);
+    doc.setFontSize(5);
     doc.setTextColor(...MIDGREY);
-    doc.text('© LINQR 2026  ·  linqr.global', x + labelW / 2, y + labelH - 1.5, { align: 'center' });
+    doc.text('© LINQR 2026  ·  linqr.global', dW / 2, dH - 2, { align: 'center' });
+
+    // Restore transform for next label
+    doc.restoreGraphicsState();
 
     labelIndex++;
   }
