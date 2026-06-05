@@ -176,30 +176,12 @@ async function generateLabelPDF(listings, dealer) {
     const x = marginLeft + col * labelW;
     const y = marginTop + row * labelH;
 
-    // ── ROTATED PORTRAIT LAYOUT — manual coordinate maths, no matrix transform ──
-    // The physical label cell is labelW(99.1) wide × labelH(67.7) tall on the page.
-    // We draw our portrait design (dW=67.7 wide × dH=99.1 tall) rotated 90° CW
-    // by converting portrait design coords (dx from left, dy from top) to page coords:
-    //   pageX = x + dy * (labelW / dH)   — scale dy along page width
-    //   pageY = y + labelH - dx * (labelH / dW)  — flip dx along page height
-    // Since dW == labelH and dH == labelW the scale factors are both 1.0, simplifying to:
-    //   pageX = x + dy
-    //   pageY = y + labelH - dx
-    // Rectangles: portrait rect(dx, dy, rw, rh) → page rect(x+dy, y+labelH-dx-rw, rh, rw)
-
-    const dW = labelH;   // 67.7mm — portrait design width
-    const dH = labelW;   // 99.1mm — portrait design height
-
-    // Shorthand converters
-    const rx = (dy) => x + dy;
-    const ry = (dx, rw) => y + labelH - dx - rw;
-
     const headerH = 12;
     const qrSize = 52;
 
     // ── LABEL BACKGROUND ──
     doc.setFillColor(...WHITE);
-    doc.rect(rx(0), y, labelW, labelH, 'F');
+    doc.rect(x, y, labelW, labelH, 'F');
 
     // ── BLACK HEADER BAR — portrait top strip, now on the right side ──
     // portrait rect(0, 0, dW, headerH) → page rect(x, y+labelH-dW, headerH, dW)
