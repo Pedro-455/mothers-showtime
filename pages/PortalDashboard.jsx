@@ -75,6 +75,11 @@ function mapCSVToListing(row, dealerId) {
 //   Text: dealer x=510, model x=558, stock x=596, copy x=618 — all y=232 rotate(-90)
 
 async function generateLabelPDF(listings, dealer) {
+  // Open window FIRST (synchronously within click handler) so browser doesn't block it
+  const win = window.open('', '_blank');
+  win.document.write('<html><body style="background:#1D6B4A;color:white;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><h2>⏳ Generating labels, please wait...</h2></body></html>');
+  win.document.close();
+
   await new Promise((resolve, reject) => {
     if (window.QRCode) return resolve();
     const s = document.createElement('script');
@@ -175,8 +180,8 @@ async function generateLabelPDF(listings, dealer) {
     pages.push(buildSheet(chunk));
   }
 
-  // Open print window
-  const win = window.open('', '_blank');
+  // Write final content to already-open window
+  win.document.open();
   win.document.write(`<!DOCTYPE html>
 <html>
 <head>
