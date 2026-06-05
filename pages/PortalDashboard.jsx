@@ -60,119 +60,237 @@ function mapCSVToListing(row, dealerId) {
 }
 
 // ─── QR LABEL PDF GENERATOR ───────────────────────────────────────────────────
-// Avery 99.1 x 139mm, 4 per sheet (2 cols x 2 rows) — portrait, no rotation needed
+// Avery 938207 — 99.1mm wide x 67.7mm tall (landscape on sheet)
+// 8 labels per A4 sheet: 2 cols x 4 rows
+// When peeled and applied to vehicle: 67.7mm wide x 99.1mm tall (portrait)
 async function generateLabelPDF(listings, dealer) {
-  await new Promise((resolve,reject)=>{ if(window.jspdf)return resolve(); const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); });
-  await new Promise((resolve,reject)=>{ if(window.QRCode)return resolve(); const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); });
+  await new Promise((resolve, reject) => {
+    if (window.jspdf) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  await new Promise((resolve, reject) => {
+    if (window.QRCode) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
 
   const { jsPDF } = window.jspdf;
-  const pageW=210, pageH=297;
-  const labelW=99.1, labelH=139;
-  const cols=2, rows=2;
-  const marginLeft=(pageW-(cols*labelW))/2;
-  const marginTop=(pageH-(rows*labelH))/2;
 
-  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  const GREEN=[27,97,87], BLACK=[17,17,17], WHITE=[255,255,255], MIDGREY=[136,136,136];
+  // ── Page & label dimensions (mm) ─────────────────────────────────────────
+  const LABEL_W    = 99.1;   // label width on sheet (landscape)
+  const LABEL_H    = 67.7;   // label height on sheet (landscape)
+  const COLS       = 2;
+  const ROWS       = 4;
+  const MARGIN_LEFT = 3.5;   // left & right sheet margin
+  const MARGIN_TOP  = 13.0;  // top & bottom sheet margin (~13mm bottom falls naturally)
+  const COL_GAP     = 3.5;   // gap between left and right columns
+  // Rows have no gap — green bars touch
 
-  const publishedListings = listings.filter(l=>l.published);
-  let labelIndex=0;
+  // ── Colours ──────────────────────────────────────────────────────────────
+  const GREEN = [29, 107, 74];    // #1D6B4A
+  const BLACK = [26, 26, 26];     // #1a1a1a
+  const WHITE = [255, 255, 255];
+  const GREY  = [102, 102, 102];  // #666
+  const LGREY = [170, 170, 170];  // #aaa
 
+  // ── Helpers ───────────────────────────────────────────────────────────────
   async function getQRDataURL(url) {
-    return new Promise(resolve=>{
-      const div=document.createElement('div'); div.style.position='absolute'; div.style.left='-9999px'; document.body.appendChild(div);
-      new window.QRCode(div,{ text:url, width:256, height:256, colorDark:'#1B6157', colorLight:'#ffffff', correctLevel:window.QRCode.CorrectLevel.H });
-      setTimeout(()=>{
-        const img=div.querySelector('img')||div.querySelector('canvas'); let dataUrl='';
-        if(img&&img.tagName==='IMG') dataUrl=img.src;
-        else if(img&&img.tagName==='CANVAS') dataUrl=img.toDataURL();
-        document.body.removeChild(div); resolve(dataUrl);
-      },300);
+    return new Promise(resolve => {
+      const div = document.createElement('div');
+      div.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+      document.body.appendChild(div);
+      new window.QRCode(div, {
+        text: url, width: 512, height: 512,
+        colorDark: '#1D6B4A', colorLight: '#ffffff',
+        correctLevel: window.QRCode.CorrectLevel.H
+      });
+      setTimeout(() => {
+        const el = div.querySelector('canvas') || div.querySelector('img');
+        const dataUrl = el
+          ? (el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src)
+          : '';
+        document.body.removeChild(div);
+        resolve(dataUrl);
+      }, 400);
     });
   }
 
   async function getLogoDataURL() {
-    return new Promise(resolve=>{
-      const img=new Image(); img.crossOrigin='anonymous';
-      img.onload=()=>{ const canvas=document.createElement('canvas'); canvas.width=img.width; canvas.height=img.height; const ctx=canvas.getContext('2d'); ctx.drawImage(img,0,0); resolve(canvas.toDataURL('image/png')); };
-      img.onerror=()=>resolve(null); img.src='/LINQR-logo.png';
+    return new Promise(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.width; c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(null);
+      img.src = '/LINQR-logo.png';
     });
   }
 
+  // ── Pre-fetch logo ────────────────────────────────────────────────────────
   const logoDataUrl = await getLogoDataURL();
 
-  for(let i=0; i<publishedListings.length; i++) {
-    const listing=publishedListings[i];
-    if(labelIndex>0 && labelIndex%(cols*rows)===0) doc.addPage();
+  // ── Create PDF — A4 landscape ─────────────────────────────────────────────
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-    const posOnPage=labelIndex%(cols*rows);
-    const col=posOnPage%cols;
-    const row=Math.floor(posOnPage/cols);
-    const x=marginLeft+col*labelW;
-    const y=marginTop+row*labelH;
+  const publishedListings = listings.filter(l => l.published);
+  let labelIndex = 0;
 
-    const headerH=18;
-    const qrSize=80;
+  for (let i = 0; i < publishedListings.length; i++) {
+    const listing = publishedListings[i];
 
-    // BACKGROUND
-    doc.setFillColor(...WHITE); doc.rect(x,y,labelW,labelH,'F');
+    // New page every 8 labels
+    if (labelIndex > 0 && labelIndex % (COLS * ROWS) === 0) doc.addPage();
 
-    // BLACK HEADER BAR
-    doc.setFillColor(...BLACK); doc.rect(x,y,labelW,headerH,'F');
+    const posOnPage = labelIndex % (COLS * ROWS);
+    const col = posOnPage % COLS;
+    const row = Math.floor(posOnPage / COLS);
 
-    // GREEN accent stripe top 4mm
-    doc.setFillColor(...GREEN); doc.rect(x,y,labelW,4,'F');
+    // Top-left corner of this label on the page (mm)
+    const lx = MARGIN_LEFT + col * (LABEL_W + COL_GAP);
+    const ly = MARGIN_TOP + row * LABEL_H;
 
-    // TAGLINE
-    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...WHITE);
-    doc.text('Scan Me  ·  Save Me  ·  Share Me', x+labelW/2, y+14, {align:'center'});
+    // ── Internal layout constants ─────────────────────────────────────────
+    const BLACK_BAR_W = 12;       // left black bar width (mm)
+    const GREEN_BAR_H = 2.5;      // top & bottom green stripe height (mm)
+    const QR_SIZE     = 44;       // QR code square size (mm)
+    const CENTRE_Y    = ly + LABEL_H / 2;
 
-    // QR CODE
-    const qrUrl=`https://linqr.global/${listing.slug}`;
-    const qrDataUrl=await getQRDataURL(qrUrl);
-    const qrX=x+(labelW-qrSize)/2;
-    const qrY=y+headerH+8;
-    if(qrDataUrl) doc.addImage(qrDataUrl,'PNG',qrX,qrY,qrSize,qrSize);
+    // QR: horizontally centred in the space between black bar and text panel
+    const TEXT_PANEL_W = 25;
+    const QR_X = lx + BLACK_BAR_W + ((LABEL_W - BLACK_BAR_W - TEXT_PANEL_W - QR_SIZE) / 2);
+    // QR: nudged slightly toward bottom green bar (matches our visual preview)
+    const QR_Y = ly + (LABEL_H - QR_SIZE) / 2 + 2;
 
-    // LINQR LOGO OVERLAY
+    // Text panel: right portion of label
+    const TEXT_CX = lx + LABEL_W - (TEXT_PANEL_W / 2);
+
+    // ── White label background ────────────────────────────────────────────
+    doc.setFillColor(...WHITE);
+    doc.rect(lx, ly, LABEL_W, LABEL_H, 'F');
+
+    // ── Label border ──────────────────────────────────────────────────────
+    doc.setDrawColor(...GREEN);
+    doc.setLineWidth(0.4);
+    doc.rect(lx, ly, LABEL_W, LABEL_H, 'S');
+
+    // ── Top green bar ─────────────────────────────────────────────────────
+    doc.setFillColor(...GREEN);
+    doc.rect(lx, ly, LABEL_W, GREEN_BAR_H, 'F');
+
+    // ── Bottom green bar ──────────────────────────────────────────────────
+    doc.setFillColor(...GREEN);
+    doc.rect(lx, ly + LABEL_H - GREEN_BAR_H, LABEL_W, GREEN_BAR_H, 'F');
+
+    // ── Black bar left ────────────────────────────────────────────────────
+    doc.setFillColor(...BLACK);
+    doc.rect(lx, ly, BLACK_BAR_W, LABEL_H, 'F');
+
+    // ── "Scan Me · Save Me · Share Me" rotated CCW in black bar ──────────
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...WHITE);
+    doc.text(
+      'Scan Me  ·  Save Me  ·  Share Me',
+      lx + BLACK_BAR_W / 2,
+      CENTRE_Y,
+      { align: 'center', angle: 90 }
+    );
+
+    // ── QR code ───────────────────────────────────────────────────────────
+    const qrUrl = `https://linqr.global/${listing.slug}`;
+    const qrDataUrl = await getQRDataURL(qrUrl);
+    if (qrDataUrl) {
+      doc.addImage(qrDataUrl, 'PNG', QR_X, QR_Y, QR_SIZE, QR_SIZE);
+    }
+
+    // ── LINQR badge — rotated CCW, centred on QR ──────────────────────────
     try {
-      const logoW=qrSize*0.28, logoH=qrSize*0.11;
-      const logoX=qrX+(qrSize-logoW)/2, logoY=qrY+(qrSize-logoH)/2;
-      const padX=2.5, padY=2.5;
-      doc.setFillColor(...GREEN); doc.roundedRect(logoX-padX,logoY-padY,logoW+padX*2,logoH+padY*2,1.5,1.5,'F');
-      doc.setDrawColor(...WHITE); doc.setLineWidth(0.6); doc.roundedRect(logoX-padX,logoY-padY,logoW+padX*2,logoH+padY*2,1.5,1.5,'S');
-      if(logoDataUrl) doc.addImage(logoDataUrl,'PNG',logoX,logoY,logoW,logoH);
+      const badgeW = 14;   // badge long dimension (vertical when rotated)
+      const badgeH = 5.5;  // badge short dimension
+      const badgeCX = QR_X + QR_SIZE / 2;
+      const badgeCY = QR_Y + QR_SIZE / 2;
+      // Draw rotated rect: badge sits portrait (tall) centred on QR
+      doc.setFillColor(...GREEN);
+      doc.roundedRect(badgeCX - badgeH / 2, badgeCY - badgeW / 2, badgeH, badgeW, 0.8, 0.8, 'F');
+      doc.setDrawColor(...WHITE);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(badgeCX - badgeH / 2, badgeCY - badgeW / 2, badgeH, badgeW, 0.8, 0.8, 'S');
+      if (logoDataUrl) {
+        const logoW = badgeH * 0.7;
+        const logoH = badgeW * 0.5;
+        doc.addImage(logoDataUrl, 'PNG', badgeCX - logoW / 2, badgeCY - logoH / 2, logoW, logoH);
+      } else {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(3.5);
+        doc.setTextColor(...WHITE);
+        doc.text('®LINQR™', badgeCX, badgeCY, { align: 'center', baseline: 'middle', angle: 90 });
+      }
     } catch(e) {}
 
-    // GREEN DIVIDER
-    const afterQR=qrY+qrSize+6;
-    doc.setDrawColor(...GREEN); doc.setLineWidth(0.5);
-    doc.line(x+10,afterQR,x+labelW-10,afterQR);
+    // ── Right text panel — all rotated 90° CCW ────────────────────────────
+    // Dealer name
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(...BLACK);
+    doc.text(
+      dealer.name || '',
+      TEXT_CX - 7,
+      CENTRE_Y,
+      { align: 'center', angle: 90 }
+    );
 
-    // DEALER NAME
-    doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(...BLACK);
-    doc.text(dealer.name||'', x+labelW/2, afterQR+8, {align:'center'});
+    // Vehicle / listing name (large green)
+    const vehicleName = listing.listing_type === 'property'
+      ? (listing.address || '')
+      : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...GREEN);
+    doc.text(
+      vehicleName,
+      TEXT_CX - 14,
+      CENTRE_Y,
+      { align: 'center', angle: 90, maxWidth: LABEL_H - 10 }
+    );
 
-    // VEHICLE NAME
-    const vehicleName=listing.listing_type==='property'
-      ?(listing.address||'')
-      :`${listing.year||''} ${listing.make||''} ${listing.model||''}`.trim();
-    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...GREEN);
-    doc.text(vehicleName, x+labelW/2, afterQR+12, {align:'center', maxWidth:labelW-12});
+    // Stock number
+    const stockLine = listing.listing_type === 'property'
+      ? `ID: ${listing.property_id || ''}`
+      : `Stock #${listing.stock_number}`;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(...GREY);
+    doc.text(
+      stockLine,
+      TEXT_CX - 20,
+      CENTRE_Y,
+      { align: 'center', angle: 90 }
+    );
 
-    // STOCK NUMBER
-    const stockLine=listing.listing_type==='property'?`ID: ${listing.property_id||''}`:`Stock #${listing.stock_number}`;
-    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...MIDGREY);
-    doc.text(stockLine, x+labelW/2, afterQR+18, {align:'center'});
-
-    // COPYRIGHT
-    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...MIDGREY);
-    doc.text('© LINQR 2026  ·  linqr.global', x+labelW/2, afterQR+21, {align:'center'});
+    // Copyright
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(4.5);
+    doc.setTextColor(...LGREY);
+    doc.text(
+      '© LINQR 2026  ·  linqr.global',
+      TEXT_CX - 23,
+      CENTRE_Y,
+      { align: 'center', angle: 90 }
+    );
 
     labelIndex++;
   }
 
-  doc.save(`${dealer.code}-QR-Labels.pdf`);
+  doc.save(`${dealer.code}-QR-Labels-8up.pdf`);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -353,7 +471,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
           {generatingLabels?'Generating PDF...':'🖨️ Print All Labels'}
         </button>
         <span style={{fontSize:12,color:'#aaa',fontFamily:'Georgia, serif'}}>
-          Avery 99.1 × 139mm · 4 per sheet · {listings.filter(l=>l.published).length} live listings · {Math.ceil(listings.filter(l=>l.published).length/4)} sheet{Math.ceil(listings.filter(l=>l.published).length/4)!==1?'s':''}
+          Avery 938207 · 99.1×67.7mm · 8 per sheet · {listings.filter(l=>l.published).length} live listings · {Math.ceil(listings.filter(l=>l.published).length/8)} sheet{Math.ceil(listings.filter(l=>l.published).length/8)!==1?'s':''}
         </span>
       </div>
 
