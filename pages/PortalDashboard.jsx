@@ -10,7 +10,6 @@ const OLD_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // Parse a CSV string into array of objects — handles multi-line quoted fields and #NAME? corruption
 function parseCSV(text) {
   const normalised = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-
   function tokenise(str) {
     const rows = [];
     let row = [];
@@ -22,27 +21,20 @@ function parseCSV(text) {
         if (inQuotes && str[i + 1] === '"') { field += '"'; i++; }
         else { inQuotes = !inQuotes; }
       } else if (ch === "," && !inQuotes) {
-        row.push(field.trim());
-        field = "";
+        row.push(field.trim()); field = "";
       } else if (ch === "\n" && !inQuotes) {
         row.push(field.trim());
         if (row.some(v => v !== "")) rows.push(row);
-        row = [];
-        field = "";
-      } else {
-        field += ch;
-      }
+        row = []; field = "";
+      } else { field += ch; }
     }
     row.push(field.trim());
     if (row.some(v => v !== "")) rows.push(row);
     return rows;
   }
-
   const rows = tokenise(normalised);
   if (rows.length < 2) return [];
-
   const headers = rows[0].map(h => h.replace(/^"|"$/g, "").trim());
-
   return rows.slice(1).map(values => {
     const row = {};
     headers.forEach((h, i) => {
@@ -73,21 +65,16 @@ function mapCSVToListing(row, dealerId) {
     colour ? `Colour: ${colour}` : null,
     keyPoints ? keyPoints : null,
   ].filter(Boolean).join("\n");
-
   const engineCC = row.engine_cc ? row.engine_cc.toString().trim() : null;
   const kms = row.kms ? Number(row.kms) : null;
-
   return {
     dealer_id: dealerId,
     listing_type: "vehicle",
     stock_number: row.stock_number.toString().trim(),
     slug: `ahd-${stockNum}`,
-    year,
-    make,
-    model,
+    year, make, model,
     model_code: modelCode || null,
-    colour,
-    price,
+    colour, price,
     engine: engineCC ? `${engineCC}cc` : null,
     odometer: kms ? `${kms.toLocaleString("en-NZ")} km` : null,
     features,
@@ -98,6 +85,173 @@ function mapCSVToListing(row, dealerId) {
   };
 }
 
+// ─── QR LABEL PDF GENERATOR ───────────────────────────────────────────────────
+// Avery 99.1 x 67.7mm, 8 per sheet (2 cols x 4 rows)
+// Uses jsPDF + qrcode library loaded dynamically
+
+async function generateLabelPDF(listings, dealer) {
+  // Load jsPDF
+  await new Promise((resolve, reject) => {
+    if (window.jspdf) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+
+  // Load QRCode
+  await new Promise((resolve, reject) => {
+    if (window.QRCode) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+
+  const { jsPDF } = window.jspdf;
+
+  // A4 page dimensions in mm
+  const pageW = 210;
+  const pageH = 297;
+
+  // Avery label dimensions
+  const labelW = 99.1;
+  const labelH = 67.7;
+  const cols = 2;
+  const rows = 4;
+
+  // Page margins (centre the grid on A4)
+  const marginLeft = (pageW - (cols * labelW)) / 2;
+  const marginTop = (pageH - (rows * labelH)) / 2;
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  // Colours
+  const GREEN = [27, 97, 87];       // #1B6157
+  const BLACK = [17, 17, 17];       // #111111
+  const WHITE = [255, 255, 255];
+  const LIGHTGREY = [245, 245, 245];
+  const MIDGREY = [136, 136, 136];
+
+  const publishedListings = listings.filter(l => l.published);
+  let labelIndex = 0;
+
+  // Generate QR code as data URL for a given URL
+  async function getQRDataURL(url) {
+    return new Promise(resolve => {
+      const div = document.createElement('div');
+      div.style.position = 'absolute';
+      div.style.left = '-9999px';
+      document.body.appendChild(div);
+      const qr = new window.QRCode(div, {
+        text: url,
+        width: 256, height: 256,
+        colorDark: '#1B6157',
+        colorLight: '#ffffff',
+        correctLevel: window.QRCode.CorrectLevel.H,
+      });
+      setTimeout(() => {
+        const img = div.querySelector('img') || div.querySelector('canvas');
+        let dataUrl = '';
+        if (img && img.tagName === 'IMG') dataUrl = img.src;
+        else if (img && img.tagName === 'CANVAS') dataUrl = img.toDataURL();
+        document.body.removeChild(div);
+        resolve(dataUrl);
+      }, 300);
+    });
+  }
+
+  for (let i = 0; i < publishedListings.length; i++) {
+    const listing = publishedListings[i];
+
+    // New page when needed
+    if (labelIndex > 0 && labelIndex % (cols * rows) === 0) {
+      doc.addPage();
+    }
+
+    const posOnPage = labelIndex % (cols * rows);
+    const col = posOnPage % cols;
+    const row = Math.floor(posOnPage / cols);
+
+    const x = marginLeft + col * labelW;
+    const y = marginTop + row * labelH;
+
+    // ── LABEL BACKGROUND ──
+    doc.setFillColor(...WHITE);
+    doc.rect(x, y, labelW, labelH, 'F');
+
+    // ── BLACK HEADER BAR ──
+    const headerH = 12;
+    doc.setFillColor(...BLACK);
+    doc.rect(x, y, labelW, headerH, 'F');
+
+    // ── GREEN accent stripe at very top (3mm) ──
+    doc.setFillColor(...GREEN);
+    doc.rect(x, y, labelW, 3, 'F');
+
+    // ── TAGLINE on header ──
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...WHITE);
+    doc.text('Scan Me  ·  Save Me  ·  Share Me', x + labelW / 2, y + 8.5, { align: 'center' });
+
+    // ── QR CODE ──
+    const qrUrl = `https://linqr.global/${listing.slug}`;
+    const qrDataUrl = await getQRDataURL(qrUrl);
+    const qrSize = 30;
+    const qrX = x + (labelW - qrSize) / 2;
+    const qrY = y + headerH + 3;
+    if (qrDataUrl) {
+      doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    }
+
+    // ── LINQR branding below QR ──
+    const afterQR = qrY + qrSize + 2;
+
+    // Green divider line
+    doc.setDrawColor(...GREEN);
+    doc.setLineWidth(0.4);
+    doc.line(x + 8, afterQR, x + labelW - 8, afterQR);
+
+    // Dealer name
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(...BLACK);
+    const dealerName = dealer.name || '';
+    doc.text(dealerName, x + labelW / 2, afterQR + 4.5, { align: 'center' });
+
+    // Vehicle name
+    const vehicleName = listing.listing_type === 'property'
+      ? (listing.address || '')
+      : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...GREEN);
+    doc.text(vehicleName, x + labelW / 2, afterQR + 9.5, { align: 'center', maxWidth: labelW - 8 });
+
+    // Stock number
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(...MIDGREY);
+    const stockLine = listing.listing_type === 'property'
+      ? `ID: ${listing.property_id || ''}`
+      : `Stock #${listing.stock_number}`;
+    doc.text(stockLine, x + labelW / 2, afterQR + 13.5, { align: 'center' });
+
+    // Copyright footer
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(4.5);
+    doc.setTextColor(...MIDGREY);
+    doc.text('© LINQR 2026  ·  linqr.global', x + labelW / 2, y + labelH - 1.5, { align: 'center' });
+
+    labelIndex++;
+  }
+
+  doc.save(`${dealer.code}-QR-Labels.pdf`);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+
 export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddProperty, onEdit }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,6 +259,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
   const [downloadingLeads, setDownloadingLeads] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [generatingLabels, setGeneratingLabels] = useState(false);
   const [stockSearch, setStockSearch] = useState("");
   const fileInputRef = useRef(null);
 
@@ -117,11 +272,8 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
       });
       const data = await res.json();
       setListings(data || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   }
 
   async function togglePublished(listing) {
@@ -142,51 +294,56 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
     fetchListings();
   }
 
+  async function handlePrintLabels() {
+    const published = listings.filter(l => l.published);
+    if (published.length === 0) {
+      alert("No live listings to print labels for.");
+      return;
+    }
+    setGeneratingLabels(true);
+    try {
+      await generateLabelPDF(listings, dealer);
+    } catch (e) {
+      console.error(e);
+      alert("Label generation failed: " + e.message);
+    } finally {
+      setGeneratingLabels(false);
+    }
+  }
+
   // --- CSV IMPORT ---
   async function handleCSVUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
     setImporting(true);
     setImportResult(null);
-
     try {
       const text = await file.text();
       const rows = parseCSV(text);
-
       if (rows.length === 0) {
         setImportResult({ error: "No valid rows found in CSV." });
         setImporting(false);
         return;
       }
-
       const existingRes = await fetch(
         `${LINQR_SUPABASE_URL}/rest/v1/listings?dealer_id=eq.${dealer.id}&select=*`,
         { headers: { "apikey": LINQR_ANON_KEY, "Authorization": `Bearer ${LINQR_ANON_KEY}` } }
       );
       const existing = await existingRes.json();
-
       const existingByStock = {};
       (existing || []).forEach(l => {
         if (l.stock_number) existingByStock[l.stock_number.toString().trim()] = l;
       });
-
       let added = 0, updated = 0, unchanged = 0;
       const updateDetails = [];
-
       for (const row of rows) {
         const mapped = mapCSVToListing(row, dealer.id);
         const stockNum = row.stock_number.toString().trim();
         const existing = existingByStock[stockNum];
-
         if (!existing) {
           await fetch(`${LINQR_SUPABASE_URL}/rest/v1/listings`, {
             method: "POST",
-            headers: {
-              "apikey": LINQR_ANON_KEY,
-              "Authorization": `Bearer ${LINQR_ANON_KEY}`,
-              "Content-Type": "application/json",
-              "Prefer": "return=minimal"
-            },
+            headers: { "apikey": LINQR_ANON_KEY, "Authorization": `Bearer ${LINQR_ANON_KEY}`, "Content-Type": "application/json", "Prefer": "return=minimal" },
             body: JSON.stringify(mapped)
           });
           added++;
@@ -202,28 +359,19 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
           if (existing.model_code !== mapped.model_code) changed.push(`model code updated`);
           if (existing.engine !== mapped.engine) changed.push(`engine: ${existing.engine} → ${mapped.engine}`);
           if (existing.odometer !== mapped.odometer) changed.push(`odometer: ${existing.odometer} → ${mapped.odometer}`);
-
           if (changed.length > 0) {
             await fetch(`${LINQR_SUPABASE_URL}/rest/v1/listings?id=eq.${existing.id}`, {
               method: "PATCH",
-              headers: {
-                "apikey": LINQR_ANON_KEY,
-                "Authorization": `Bearer ${LINQR_ANON_KEY}`,
-                "Content-Type": "application/json"
-              },
+              headers: { "apikey": LINQR_ANON_KEY, "Authorization": `Bearer ${LINQR_ANON_KEY}`, "Content-Type": "application/json" },
               body: JSON.stringify(mapped)
             });
             updated++;
             updateDetails.push(`Stock #${stockNum} — ${changed.join(", ")}`);
-          } else {
-            unchanged++;
-          }
+          } else { unchanged++; }
         }
       }
-
       await fetchListings();
       setImportResult({ added, updated, unchanged, updateDetails });
-
     } catch (err) {
       console.error(err);
       setImportResult({ error: "Import failed: " + err.message });
@@ -241,52 +389,37 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
       const fromISO = fromDate.toISOString();
       const slugs = listings.map(l => l.slug);
       const dealerCode = dealer.code.toLowerCase();
-
-      if (slugs.length === 0) {
-        alert("No listings found for this dealer.");
-        setDownloadingLeads(false);
-        return;
-      }
-
+      if (slugs.length === 0) { alert("No listings found for this dealer."); setDownloadingLeads(false); return; }
       const res = await fetch(
         `${OLD_SUPABASE_URL}/rest/v1/sellsheet_contacts?created_at=gte.${fromISO}&order=created_at.desc&select=*`,
         { headers: { "apikey": OLD_ANON_KEY, "Authorization": `Bearer ${OLD_ANON_KEY}` } }
       );
       const allLeads = await res.json();
-
       const excludeEmails = ["pe@mothers.co.nz", "pemothersnz@gmail.com", dealer.email].filter(Boolean).map(e => e.toLowerCase());
-
       const dealerLeads = (allLeads || []).filter(lead => {
         if (!lead.car_url) return false;
         if (excludeEmails.includes((lead.email || "").toLowerCase())) return false;
         return slugs.some(slug => lead.car_url.includes(slug)) || lead.car_url.includes(`/${dealerCode}-`);
       });
-
       if (dealerLeads.length === 0) {
         alert(`No leads found in the last ${leadDays} days.\n\n(Your own test emails are excluded from the report)`);
         setDownloadingLeads(false);
         return;
       }
-
       const headers = ["Name", "Email", "Listing", "Reference", "Date"];
       const rows = dealerLeads.map(lead => {
         const matchedListing = listings.find(l => lead.car_url && lead.car_url.includes(l.slug));
         const listingName = matchedListing
-          ? (matchedListing.listing_type === "property"
-              ? matchedListing.address
-              : `${matchedListing.year || ""} ${matchedListing.make} ${matchedListing.model}`.trim())
+          ? (matchedListing.listing_type === "property" ? matchedListing.address : `${matchedListing.year || ""} ${matchedListing.make} ${matchedListing.model}`.trim())
           : (lead.car_name || "");
         const reference = matchedListing
-          ? (matchedListing.listing_type === "property"
-              ? matchedListing.property_id
-              : `Stock #${matchedListing.stock_number}`)
+          ? (matchedListing.listing_type === "property" ? matchedListing.property_id : `Stock #${matchedListing.stock_number}`)
           : "";
         const date = lead.created_at
           ? new Date(lead.created_at).toLocaleDateString("en-NZ", { day: "2-digit", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
           : "";
         return [`"${lead.name || ""}"`, `"${lead.email || ""}"`, `"${listingName}"`, `"${reference}"`, `"${date}"`].join(",");
       });
-
       const csv = [headers.join(","), ...rows].join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
@@ -295,13 +428,10 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
       a.download = `${dealer.code}-leads-last-${leadDays}-days.csv`;
       a.click();
       URL.revokeObjectURL(url);
-
     } catch (e) {
       console.error(e);
       alert("Something went wrong downloading leads.");
-    } finally {
-      setDownloadingLeads(false);
-    }
+    } finally { setDownloadingLeads(false); }
   }
 
   const isRayWhite = dealer?.brand_colour === '#FFCD00';
@@ -309,7 +439,6 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
   const brandColour = dealer?.brand_colour || '#1B6157';
   const headerTextColour = isRayWhite ? '#000000' : '#ffffff';
 
-  // Filter listings by stock number search
   const filteredListings = stockSearch.trim()
     ? listings.filter(l => l.stock_number && l.stock_number.toString().includes(stockSearch.trim()))
     : listings;
@@ -394,13 +523,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
         {/* IMPORT STOCK BAR */}
         <div style={{ background: '#f9f9f9', borderBottom: '1px solid #eee', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#333', fontFamily: 'Georgia, serif' }}>📂 Import Stock</div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            style={{ display: 'none' }}
-            onChange={handleCSVUpload}
-          />
+          <input ref={fileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCSVUpload} />
           <button
             onClick={() => fileInputRef.current && fileInputRef.current.click()}
             disabled={importing}
@@ -409,6 +532,21 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
             {importing ? 'Importing...' : '⬆️ Upload CSV'}
           </button>
           <span style={{ fontSize: 12, color: '#aaa', fontFamily: 'Georgia, serif' }}>Upload your stock CSV — new listings added, changes updated, unchanged skipped</span>
+        </div>
+
+        {/* PRINT LABELS BAR */}
+        <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#333', fontFamily: 'Georgia, serif' }}>🏷️ Print QR Labels</div>
+          <button
+            onClick={handlePrintLabels}
+            disabled={generatingLabels}
+            style={{ background: generatingLabels ? '#aaa' : '#1B6157', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: generatingLabels ? 'not-allowed' : 'pointer', fontFamily: 'Georgia, serif' }}
+          >
+            {generatingLabels ? 'Generating PDF...' : '🖨️ Print All Labels'}
+          </button>
+          <span style={{ fontSize: 12, color: '#aaa', fontFamily: 'Georgia, serif' }}>
+            Avery 99.1 × 67.7mm · 8 per sheet · {listings.filter(l => l.published).length} live listings · {Math.ceil(listings.filter(l => l.published).length / 8)} sheet{Math.ceil(listings.filter(l => l.published).length / 8) !== 1 ? 's' : ''}
+          </span>
         </div>
 
         {/* IMPORT RESULT */}
@@ -447,22 +585,10 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
               placeholder="🔍  Search by stock number..."
               value={stockSearch}
               onChange={e => setStockSearch(e.target.value)}
-              style={{
-                border: '1px solid #ddd',
-                borderRadius: 8,
-                padding: '10px 14px',
-                fontSize: 13,
-                fontFamily: 'Georgia, serif',
-                color: '#333',
-                width: 260,
-                outline: 'none',
-              }}
+              style={{ border: '1px solid #ddd', borderRadius: 8, padding: '10px 14px', fontSize: 13, fontFamily: 'Georgia, serif', color: '#333', width: 260, outline: 'none' }}
             />
             {stockSearch && (
-              <button
-                onClick={() => setStockSearch("")}
-                style={{ background: 'none', border: 'none', fontSize: 13, color: '#888', cursor: 'pointer', fontFamily: 'Georgia, serif' }}
-              >
+              <button onClick={() => setStockSearch("")} style={{ background: 'none', border: 'none', fontSize: 13, color: '#888', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
                 ✕ Clear
               </button>
             )}
@@ -500,9 +626,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
               </div>
               <div style={styles.listingInfo}>
                 <p style={styles.listingTitle}>
-                  {listing.listing_type === 'property'
-                    ? listing.address
-                    : `${listing.year} ${listing.make} ${listing.model}`}
+                  {listing.listing_type === 'property' ? listing.address : `${listing.year} ${listing.make} ${listing.model}`}
                 </p>
                 <p style={styles.listingMeta}>
                   {listing.listing_type === 'property'
