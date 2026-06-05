@@ -60,9 +60,29 @@ function mapCSVToListing(row, dealerId) {
 }
 
 // ─── QR LABEL PDF GENERATOR ───────────────────────────────────────────────────
-// Avery 938207 — 99.1mm wide x 67.7mm tall (landscape on sheet)
-// 8 labels per A4 sheet: 2 cols x 4 rows
-// When peeled and applied to vehicle: 67.7mm wide x 99.1mm tall (portrait)
+// Avery 938207 — 99.1mm wide x 67.7mm tall on sheet (landscape)
+// 8 per sheet: 2 cols x 4 rows
+// Peeled label reads portrait: 67.7mm wide x 99.1mm tall
+//
+// SVG preview coords (px) → PDF coords (mm)
+// SVG label body: x=20..660 (640px wide), y=20..445 (425px tall)
+// Scale: 99.1/640 = 0.154844 mm/px  (width)
+//        67.7/425 = 0.159294 mm/px  (height)
+// We use a single scale S = 99.1/640 and accept slight stretch on Y
+// because the label proportions are very close.
+//
+// Key SVG coords from locked checkpoint:
+//   Black bar:      x=20 w=72  → offset=0, width=72*S
+//   QR block:       x=156 y=80 w=300 h=350
+//   LINQR badge:    centre translate(306,255)
+//   Green bar top:  y=20 h=16
+//   Green bar bot:  y=429 h=16
+//   Text lines (all at x=232 centre of label, rotated -90):
+//     dealer  x=510
+//     model   x=558
+//     stock   x=596
+//     copy    x=618
+
 async function generateLabelPDF(listings, dealer) {
   await new Promise((resolve, reject) => {
     if (window.jspdf) return resolve();
@@ -81,24 +101,37 @@ async function generateLabelPDF(listings, dealer) {
 
   const { jsPDF } = window.jspdf;
 
-  // ── Page & label dimensions (mm) ─────────────────────────────────────────
-  const LABEL_W    = 99.1;   // label width on sheet (landscape)
-  const LABEL_H    = 67.7;   // label height on sheet (landscape)
-  const COLS       = 2;
-  const ROWS       = 4;
-  const MARGIN_LEFT = 3.5;   // left & right sheet margin
-  const MARGIN_TOP  = 13.0;  // top & bottom sheet margin (~13mm bottom falls naturally)
-  const COL_GAP     = 3.5;   // gap between left and right columns
-  // Rows have no gap — green bars touch
+  // ── Label & sheet dimensions ──────────────────────────────────────────────
+  const LW = 99.1;   // label width  on sheet (mm)
+  const LH = 67.7;   // label height on sheet (mm)
+  const COLS = 2;
+  const ROWS = 4;
+  const MARGIN_L = 3.5;   // left margin (mm)
+  const MARGIN_T = 13.0;  // top margin  (mm)
+  const COL_GAP  = 3.5;   // gap between columns (mm)
+  // Rows touch — no gap
 
-  // ── Colours ──────────────────────────────────────────────────────────────
-  const GREEN = [29, 107, 74];    // #1D6B4A
-  const BLACK = [26, 26, 26];     // #1a1a1a
+  // ── SVG → mm scale ───────────────────────────────────────────────────────
+  // SVG label body is 640px wide × 425px tall (inside the 20px border offset)
+  const SW = 640;  // SVG label body width  (px)
+  const SH = 425;  // SVG label body height (px)
+  const SX = 20;   // SVG label body x offset
+  const SY = 20;   // SVG label body y offset
+
+  // Convert SVG px coordinate to mm offset within a label
+  const mx = svgX => ((svgX - SX) / SW) * LW;
+  const my = svgY => ((svgY - SY) / SH) * LH;
+  const mw = svgW => (svgW / SW) * LW;
+  const mh = svgH => (svgH / SH) * LH;
+
+  // ── Colours ───────────────────────────────────────────────────────────────
+  const GREEN = [29, 107, 74];
+  const BLACK = [26, 26, 26];
   const WHITE = [255, 255, 255];
-  const GREY  = [102, 102, 102];  // #666
-  const LGREY = [170, 170, 170];  // #aaa
+  const GREY  = [102, 102, 102];
+  const LGREY = [170, 170, 170];
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── QR helper ─────────────────────────────────────────────────────────────
   async function getQRDataURL(url) {
     return new Promise(resolve => {
       const div = document.createElement('div');
@@ -111,9 +144,7 @@ async function generateLabelPDF(listings, dealer) {
       });
       setTimeout(() => {
         const el = div.querySelector('canvas') || div.querySelector('img');
-        const dataUrl = el
-          ? (el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src)
-          : '';
+        const dataUrl = el ? (el.tagName==='CANVAS' ? el.toDataURL('image/png') : el.src) : '';
         document.body.removeChild(div);
         resolve(dataUrl);
       }, 400);
@@ -122,8 +153,7 @@ async function generateLabelPDF(listings, dealer) {
 
   async function getLogoDataURL() {
     return new Promise(resolve => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
+      const img = new Image(); img.crossOrigin = 'anonymous';
       img.onload = () => {
         const c = document.createElement('canvas');
         c.width = img.width; c.height = img.height;
@@ -135,157 +165,128 @@ async function generateLabelPDF(listings, dealer) {
     });
   }
 
-  // ── Pre-fetch logo ────────────────────────────────────────────────────────
   const logoDataUrl = await getLogoDataURL();
 
-  // ── Create PDF — A4 landscape ─────────────────────────────────────────────
+  // ── PDF — A4 landscape ────────────────────────────────────────────────────
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-
   const publishedListings = listings.filter(l => l.published);
   let labelIndex = 0;
 
   for (let i = 0; i < publishedListings.length; i++) {
     const listing = publishedListings[i];
 
-    // New page every 8 labels
     if (labelIndex > 0 && labelIndex % (COLS * ROWS) === 0) doc.addPage();
 
-    const posOnPage = labelIndex % (COLS * ROWS);
-    const col = posOnPage % COLS;
-    const row = Math.floor(posOnPage / COLS);
+    const pos = labelIndex % (COLS * ROWS);
+    const col = pos % COLS;
+    const row = Math.floor(pos / COLS);
 
-    // Top-left corner of this label on the page (mm)
-    const lx = MARGIN_LEFT + col * (LABEL_W + COL_GAP);
-    const ly = MARGIN_TOP + row * LABEL_H;
+    // Top-left of this label on the page (mm)
+    const lx = MARGIN_L + col * (LW + COL_GAP);
+    const ly = MARGIN_T + row * LH;
 
-    // ── Internal layout constants ─────────────────────────────────────────
-    const BLACK_BAR_W = 12;       // left black bar width (mm)
-    const GREEN_BAR_H = 2.5;      // top & bottom green stripe height (mm)
-    const QR_SIZE     = 44;       // QR code square size (mm)
-    const CENTRE_Y    = ly + LABEL_H / 2;
+    // Helper: absolute mm position from SVG coords
+    const ax = svgX => lx + mx(svgX);
+    const ay = svgY => ly + my(svgY);
 
-    // QR: horizontally centred in the space between black bar and text panel
-    const TEXT_PANEL_W = 25;
-    const QR_X = lx + BLACK_BAR_W + ((LABEL_W - BLACK_BAR_W - TEXT_PANEL_W - QR_SIZE) / 2);
-    // QR: nudged slightly toward bottom green bar (matches our visual preview)
-    const QR_Y = ly + (LABEL_H - QR_SIZE) / 2 + 2;
-
-    // Text panel: right portion of label
-    const TEXT_CX = lx + LABEL_W - (TEXT_PANEL_W / 2);
-
-    // ── White label background ────────────────────────────────────────────
+    // ── White background ────────────────────────────────────────────────────
     doc.setFillColor(...WHITE);
-    doc.rect(lx, ly, LABEL_W, LABEL_H, 'F');
+    doc.rect(lx, ly, LW, LH, 'F');
 
-    // ── Label border ──────────────────────────────────────────────────────
+    // ── Label border ────────────────────────────────────────────────────────
     doc.setDrawColor(...GREEN);
-    doc.setLineWidth(0.4);
-    doc.rect(lx, ly, LABEL_W, LABEL_H, 'S');
+    doc.setLineWidth(0.3);
+    doc.rect(lx, ly, LW, LH, 'S');
 
-    // ── Top green bar ─────────────────────────────────────────────────────
+    // ── Green bar TOP  (SVG: x=20 y=20 w=640 h=16) ─────────────────────────
     doc.setFillColor(...GREEN);
-    doc.rect(lx, ly, LABEL_W, GREEN_BAR_H, 'F');
+    doc.rect(lx, ly, LW, mh(16), 'F');
 
-    // ── Bottom green bar ──────────────────────────────────────────────────
+    // ── Green bar BOTTOM (SVG: x=20 y=429 w=640 h=16) ──────────────────────
     doc.setFillColor(...GREEN);
-    doc.rect(lx, ly + LABEL_H - GREEN_BAR_H, LABEL_W, GREEN_BAR_H, 'F');
+    doc.rect(lx, ly + LH - mh(16), LW, mh(16), 'F');
 
-    // ── Black bar left ────────────────────────────────────────────────────
+    // ── Black bar LEFT (SVG: x=20 y=20 w=72 h=425) ─────────────────────────
     doc.setFillColor(...BLACK);
-    doc.rect(lx, ly, BLACK_BAR_W, LABEL_H, 'F');
+    doc.rect(lx, ly, mw(72), LH, 'F');
 
-    // ── "Scan Me · Save Me · Share Me" rotated CCW in black bar ──────────
+    // ── "Scan Me · Save Me · Share Me" (SVG: translate(56,232) rotate(-90)) ─
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setTextColor(...WHITE);
     doc.text(
       'Scan Me  ·  Save Me  ·  Share Me',
-      lx + BLACK_BAR_W / 2,
-      CENTRE_Y,
+      ax(56),
+      ay(232),
       { align: 'center', angle: 90 }
     );
 
-    // ── QR code ───────────────────────────────────────────────────────────
+    // ── QR code (SVG: x=156 y=80 w=300 h=350) ──────────────────────────────
+    const qrX = ax(156);
+    const qrY = ay(80);
+    const qrW = mw(300);
+    const qrH = mh(350);
     const qrUrl = `https://linqr.global/${listing.slug}`;
     const qrDataUrl = await getQRDataURL(qrUrl);
-    if (qrDataUrl) {
-      doc.addImage(qrDataUrl, 'PNG', QR_X, QR_Y, QR_SIZE, QR_SIZE);
-    }
+    if (qrDataUrl) doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrW, qrH);
 
-    // ── LINQR badge — rotated CCW, centred on QR ──────────────────────────
+    // ── LINQR badge (SVG: translate(306,255) rotate(-90), rect -42..42 x -14..14)
     try {
-      const badgeW = 14;   // badge long dimension (vertical when rotated)
-      const badgeH = 5.5;  // badge short dimension
-      const badgeCX = QR_X + QR_SIZE / 2;
-      const badgeCY = QR_Y + QR_SIZE / 2;
-      // Draw rotated rect: badge sits portrait (tall) centred on QR
+      const bCX = ax(306);
+      const bCY = ay(255);
+      const bW  = mw(84);   // badge long side (was 84px wide in SVG, now vertical)
+      const bH  = mw(28);   // badge short side
       doc.setFillColor(...GREEN);
-      doc.roundedRect(badgeCX - badgeH / 2, badgeCY - badgeW / 2, badgeH, badgeW, 0.8, 0.8, 'F');
+      doc.roundedRect(bCX - bH/2, bCY - bW/2, bH, bW, 0.6, 0.6, 'F');
       doc.setDrawColor(...WHITE);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(badgeCX - badgeH / 2, badgeCY - badgeW / 2, badgeH, badgeW, 0.8, 0.8, 'S');
+      doc.setLineWidth(0.2);
+      doc.roundedRect(bCX - bH/2, bCY - bW/2, bH, bW, 0.6, 0.6, 'S');
       if (logoDataUrl) {
-        const logoW = badgeH * 0.7;
-        const logoH = badgeW * 0.5;
-        doc.addImage(logoDataUrl, 'PNG', badgeCX - logoW / 2, badgeCY - logoH / 2, logoW, logoH);
+        const lW = bH * 0.75;
+        const lH = bW * 0.55;
+        doc.addImage(logoDataUrl, 'PNG', bCX - lW/2, bCY - lH/2, lW, lH);
       } else {
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(3.5);
+        doc.setFontSize(3);
         doc.setTextColor(...WHITE);
-        doc.text('®LINQR™', badgeCX, badgeCY, { align: 'center', baseline: 'middle', angle: 90 });
+        doc.text('®LINQR™', bCX, bCY, { align: 'center', baseline: 'middle', angle: 90 });
       }
     } catch(e) {}
 
-    // ── Right text panel — all rotated 90° CCW ────────────────────────────
+    // ── Text panel — rotated 90° CCW ────────────────────────────────────────
+    // In SVG: transform="translate(X, 232) rotate(-90)"
+    // In jsPDF: text at (ax(X), ay(232)) with angle:90
+    // SVG X positions from checkpoint: dealer=510, model=558, stock=596, copy=618
+
     // Dealer name
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(...BLACK);
-    doc.text(
-      dealer.name || '',
-      TEXT_CX - 7,
-      CENTRE_Y,
-      { align: 'center', angle: 90 }
-    );
+    doc.text(dealer.name || '', ax(510), ay(232), { align: 'center', angle: 90 });
 
-    // Vehicle / listing name (large green)
+    // Vehicle name (large green)
     const vehicleName = listing.listing_type === 'property'
       ? (listing.address || '')
       : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(...GREEN);
-    doc.text(
-      vehicleName,
-      TEXT_CX - 14,
-      CENTRE_Y,
-      { align: 'center', angle: 90, maxWidth: LABEL_H - 10 }
-    );
+    doc.text(vehicleName, ax(558), ay(232), { align: 'center', angle: 90, maxWidth: LH - 6 });
 
     // Stock number
     const stockLine = listing.listing_type === 'property'
       ? `ID: ${listing.property_id || ''}`
       : `Stock #${listing.stock_number}`;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.5);
+    doc.setFontSize(5);
     doc.setTextColor(...GREY);
-    doc.text(
-      stockLine,
-      TEXT_CX - 20,
-      CENTRE_Y,
-      { align: 'center', angle: 90 }
-    );
+    doc.text(stockLine, ax(596), ay(232), { align: 'center', angle: 90 });
 
     // Copyright
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(4.5);
+    doc.setFontSize(4);
     doc.setTextColor(...LGREY);
-    doc.text(
-      '© LINQR 2026  ·  linqr.global',
-      TEXT_CX - 23,
-      CENTRE_Y,
-      { align: 'center', angle: 90 }
-    );
+    doc.text('© LINQR 2026  ·  linqr.global', ax(618), ay(232), { align: 'center', angle: 90 });
 
     labelIndex++;
   }
