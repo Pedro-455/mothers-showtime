@@ -208,16 +208,19 @@ async function generateLabelPDF(listings, dealer) {
     // ── LINQR logo overlay in centre of QR ──
     // Load LINQR logo and draw a green rounded box with the logo centred on the QR
     try {
-      const logoSize = 7;
-      const logoX = qrX + (qrSize - logoSize) / 2;
-      const logoY = qrY + (qrSize - logoSize) / 2;
+      // Logo: wider than tall — 10mm x 4mm to match aspect ratio
+      const logoW = 10;
+      const logoH = 4;
+      const logoX = qrX + (qrSize - logoW) / 2;
+      const logoY = qrY + (qrSize - logoH) / 2;
+      const padX = 1.5, padY = 1.5;
       // Green background box
       doc.setFillColor(...GREEN);
-      doc.roundedRect(logoX - 1, logoY - 1, logoSize + 2, logoSize + 2, 1, 1, 'F');
+      doc.roundedRect(logoX - padX, logoY - padY, logoW + padX * 2, logoH + padY * 2, 1.2, 1.2, 'F');
       // White border
       doc.setDrawColor(...WHITE);
       doc.setLineWidth(0.5);
-      doc.roundedRect(logoX - 1, logoY - 1, logoSize + 2, logoSize + 2, 1, 1, 'S');
+      doc.roundedRect(logoX - padX, logoY - padY, logoW + padX * 2, logoH + padY * 2, 1.2, 1.2, 'S');
       // Logo image
       const logoDataUrl = await new Promise(resolve => {
         const img = new Image();
@@ -233,7 +236,7 @@ async function generateLabelPDF(listings, dealer) {
         img.src = '/LINQR-logo.png';
       });
       if (logoDataUrl) {
-        doc.addImage(logoDataUrl, 'PNG', logoX, logoY, logoSize, logoSize);
+        doc.addImage(logoDataUrl, 'PNG', logoX, logoY, logoW, logoH);
       }
     } catch(e) { /* logo overlay optional — skip if fails */ }
 
