@@ -239,50 +239,40 @@ async function generateLabelPDF(listings, dealer) {
       }
     } catch(e) { /* logo overlay optional */ }
 
-    // ── GREEN vertical divider between QR and text ──
-    const textX = qrX + qrSize + 3;
-    doc.setDrawColor(...GREEN);
-    doc.setLineWidth(0.4);
-    doc.line(textX - 1, y + 4, textX - 1, y + labelH - 4);
+    // ── TEXT ZONE — rotated 90° to match tagline direction ──
+    // All text reads bottom-to-top (angle: 90), anchored at right edge of label
+    const textStartX = x + labelW - 3;  // right side, text reads upward
+    const textMidY = y + labelH / 2;
 
-    // ── TEXT ZONE — right of QR ──
-    const textW = labelW - headerH - qrSize - 10;
-    const midY = y + labelH / 2;
-
-    // Dealer name
+    // Dealer name — bold black, centred vertically
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(...BLACK);
-    doc.text(dealer.name || '', textX, midY - 10, { maxWidth: textW });
+    doc.text(dealer.name || '', textStartX, y + labelH - 4, { angle: 90 });
 
-    // Thin green rule under dealer name
-    doc.setDrawColor(...GREEN);
-    doc.setLineWidth(0.3);
-    doc.line(textX, midY - 7, textX + textW, midY - 7);
-
-    // Vehicle name
+    // Vehicle name — bold green, below dealer name
     const vehicleName = listing.listing_type === 'property'
       ? (listing.address || '')
       : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(...GREEN);
-    doc.text(vehicleName, textX, midY - 1, { maxWidth: textW });
+    doc.text(vehicleName, textStartX - 10, y + labelH - 4, { angle: 90 });
 
-    // Stock number
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(...MIDGREY);
+    // Stock number — grey
     const stockLine = listing.listing_type === 'property'
       ? `ID: ${listing.property_id || ''}`
       : `Stock #${listing.stock_number}`;
-    doc.text(stockLine, textX, midY + 7, { maxWidth: textW });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...MIDGREY);
+    doc.text(stockLine, textStartX - 20, y + labelH - 4, { angle: 90 });
 
     // Copyright
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5);
     doc.setTextColor(...MIDGREY);
-    doc.text('© LINQR 2026  ·  linqr.global', textX, y + labelH - 2, { maxWidth: textW });
+    doc.text('© LINQR 2026  ·  linqr.global', textStartX - 28, y + labelH - 4, { angle: 90 });
 
     labelIndex++;
   }
