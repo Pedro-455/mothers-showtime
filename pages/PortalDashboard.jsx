@@ -266,8 +266,12 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
       const res=await fetch(`${OLD_SUPABASE_URL}/rest/v1/sellsheet_contacts?created_at=gte.${fromISO}&order=created_at.desc&select=*`,{ headers:{"apikey":OLD_ANON_KEY,"Authorization":`Bearer ${OLD_ANON_KEY}`} });
       const allLeads=await res.json();
       const excludeEmails=["pe@mothers.co.nz","pemothersnz@gmail.com",dealer.email].filter(Boolean).map(e=>e.toLowerCase());
-      const dealerLeads=(allLeads||[]).filter(lead=>{ if(!lead.car_url) return false; if(excludeEmails.includes((lead.email||"").toLowerCase())) return false; return slugs.some(slug=>lead.car_url.includes(slug))||lead.car_url.includes(`/${dealerCode}-`); });
-      if(dealerLeads.length===0){ alert(`No leads found in the last ${leadDays} days.\n\n(Your own test emails are excluded from the report)`); setDownloadingLeads(false); return; }
+      const dealerLeads=(allLeads||[]).filter(lead=>{ 
+        if(!lead.car_url) return false; 
+        if(excludeEmails.includes((lead.email||"").toLowerCase())) return false; 
+        return lead.car_url.includes(`/${dealerCode}-`);
+      });
+      if(dealerLeads.length===0){ alert(`No leads found in the last ${leadDays} days.`); setDownloadingLeads(false); return; }
       const headers=["Name","Email","Listing","Reference","Date"];
       const rows=dealerLeads.map(lead=>{
         const matchedListing=listings.find(l=>lead.car_url&&lead.car_url.includes(l.slug));
