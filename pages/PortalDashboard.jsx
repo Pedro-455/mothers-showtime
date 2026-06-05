@@ -124,8 +124,8 @@ async function generateLabelPDF(listings, dealer) {
     doc.setFillColor(...GREEN); doc.rect(x,y,labelW,4,'F');
 
     // TAGLINE
-    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...WHITE);
-    doc.text('Scan Me  ·  Save Me  ·  Share Me', x+labelW/2, y+13, {align:'center'});
+    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...WHITE);
+    doc.text('Scan Me  ·  Save Me  ·  Share Me', x+labelW/2, y+14, {align:'center'});
 
     // QR CODE
     const qrUrl=`https://linqr.global/${listing.slug}`;
@@ -150,23 +150,23 @@ async function generateLabelPDF(listings, dealer) {
     doc.line(x+10,afterQR,x+labelW-10,afterQR);
 
     // DEALER NAME
-    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...BLACK);
-    doc.text(dealer.name||'', x+labelW/2, afterQR+9, {align:'center'});
+    doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(...BLACK);
+    doc.text(dealer.name||'', x+labelW/2, afterQR+10, {align:'center'});
 
     // VEHICLE NAME
     const vehicleName=listing.listing_type==='property'
       ?(listing.address||'')
       :`${listing.year||''} ${listing.make||''} ${listing.model||''}`.trim();
-    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...GREEN);
-    doc.text(vehicleName, x+labelW/2, afterQR+18, {align:'center', maxWidth:labelW-12});
+    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...GREEN);
+    doc.text(vehicleName, x+labelW/2, afterQR+20, {align:'center', maxWidth:labelW-12});
 
     // STOCK NUMBER
     const stockLine=listing.listing_type==='property'?`ID: ${listing.property_id||''}`:`Stock #${listing.stock_number}`;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...MIDGREY);
-    doc.text(stockLine, x+labelW/2, afterQR+26, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...MIDGREY);
+    doc.text(stockLine, x+labelW/2, afterQR+29, {align:'center'});
 
     // COPYRIGHT
-    doc.setFont('helvetica','normal'); doc.setFontSize(6); doc.setTextColor(...MIDGREY);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...MIDGREY);
     doc.text('© LINQR 2026  ·  linqr.global', x+labelW/2, y+labelH-3, {align:'center'});
 
     labelIndex++;
