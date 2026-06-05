@@ -151,23 +151,23 @@ async function generateLabelPDF(listings, dealer) {
 
     // DEALER NAME
     doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(...BLACK);
-    doc.text(dealer.name||'', x+labelW/2, afterQR+10, {align:'center'});
+    doc.text(dealer.name||'', x+labelW/2, afterQR+8, {align:'center'});
 
-    // VEHICLE NAME
+    // VEHICLE NAME — lifted up
     const vehicleName=listing.listing_type==='property'
       ?(listing.address||'')
       :`${listing.year||''} ${listing.make||''} ${listing.model||''}`.trim();
     doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...GREEN);
-    doc.text(vehicleName, x+labelW/2, afterQR+20, {align:'center', maxWidth:labelW-12});
+    doc.text(vehicleName, x+labelW/2, afterQR+15, {align:'center', maxWidth:labelW-12});
 
-    // STOCK NUMBER
+    // STOCK NUMBER — lifted up
     const stockLine=listing.listing_type==='property'?`ID: ${listing.property_id||''}`:`Stock #${listing.stock_number}`;
     doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...MIDGREY);
-    doc.text(stockLine, x+labelW/2, afterQR+29, {align:'center'});
+    doc.text(stockLine, x+labelW/2, afterQR+22, {align:'center'});
 
-    // COPYRIGHT
+    // COPYRIGHT — lifted up
     doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...MIDGREY);
-    doc.text('© LINQR 2026  ·  linqr.global', x+labelW/2, y+labelH-3, {align:'center'});
+    doc.text('© LINQR 2026  ·  linqr.global', x+labelW/2, afterQR+29, {align:'center'});
 
     labelIndex++;
   }
