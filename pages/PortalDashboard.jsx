@@ -268,13 +268,13 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
       ? `ID: ${listing.property_id || ''}`
       : `Stock #${listing.stock_number}`;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
+    doc.setFontSize(8.4);
     doc.setTextColor(...GREY);
     doc.text(stockLine, lx + LW - 3, BODY_Y + BODY_H * 0.82, { align: 'right' });
 
     // Copyright
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5);
+    doc.setFontSize(7);
     doc.setTextColor(...LGREY);
     doc.text("© LINQR 2026  ·  linqr.global", lx + LW - 3, BODY_Y + BODY_H * 0.93, { align: 'right' });
 
