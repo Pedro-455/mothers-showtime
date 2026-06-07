@@ -248,11 +248,12 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     } catch(e) {}
 
     // ── Right text panel ──────────────────────────────────────────────────
-    // Dealer name
+    // Dealer name — auto wrap if too long
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(...DKGREY);
-    doc.text(dealer.name || '', TEXT_X, BODY_Y + BODY_H * 0.28);
+    const dealerLines = doc.splitTextToSize(dealer.name || '', TEXT_W);
+    doc.text(dealerLines, TEXT_X, BODY_Y + BODY_H * 0.25);
 
     // Vehicle / listing name
     const vehicleName = listing.listing_type === 'property'
@@ -261,7 +262,8 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...GREEN);
-    doc.text(vehicleName, TEXT_X, BODY_Y + BODY_H * 0.48, { maxWidth: TEXT_W });
+    const vehicleLines = doc.splitTextToSize(vehicleName, TEXT_W);
+    doc.text(vehicleLines, TEXT_X, BODY_Y + BODY_H * 0.48);
 
     // Stock / ID
     const stockLine = listing.listing_type === 'property'
