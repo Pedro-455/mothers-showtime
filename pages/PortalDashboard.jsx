@@ -60,63 +60,53 @@ function mapCSVToListing(row, dealerId) {
 }
 
 // ─── QR LABEL PDF GENERATOR ───────────────────────────────────────────────────
-// Avery 938207 — 99.1mm wide × 67.7mm tall
-// A4 landscape — 2 cols × 4 rows = 8 labels per sheet
-// Pure landscape label — NO rotation needed anywhere
-// Green stripe top & bottom, black Scan Me bar, QR left, text right
+// Avery 938207 — 99.1mm × 67.7mm — A4 portrait — 2 cols × 4 rows = 8 labels
 
 async function generateLabelPDF(listings, dealer, singleListing = null) {
+
+  // Load jsPDF
   await new Promise((resolve, reject) => {
     if (window.jspdf) return resolve();
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    s.onload = resolve; s.onerror = reject;
+    s.onload = resolve;
+    s.onerror = reject;
     document.head.appendChild(s);
   });
+
+  // Load QRCode library
   await new Promise((resolve, reject) => {
     if (window.QRCode) return resolve();
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-    s.onload = resolve; s.onerror = reject;
+    s.onload = resolve;
+    s.onerror = reject;
     document.head.appendChild(s);
   });
 
   const { jsPDF } = window.jspdf;
 
-  // ── Dimensions (all mm) ───────────────────────────────────────────────────
+  // ── Dimensions ─────────────────────────────────────────────────────────────
   const LW = 99.1;   // label width
   const LH = 67.7;   // label height
   const COLS = 2;
   const ROWS = 4;
-  // A4 landscape: 297 × 210mm
-  // 2 cols: (297 - 2*LW) / 2 = (297 - 198.2) / 2 = 49.4mm — too much
-  // Centre them: marginL = (297 - 2*99.1) / 2 = 49.4/2 = 24.35mm... let's snap to edge
-  // Labels touch — no gap between labels
-  const MARGIN_L = (297 - COLS * LW) / 2;  // ~49.4mm each side — centres on page
-  const MARGIN_T = (210 - ROWS * LH) / 2;  // ~(210-270.8)/2 — labels overflow, use 0
-  // Actually 4 * 67.7 = 270.8 > 210mm — won't fit 4 rows on landscape A4!
-  // Use 2 rows × 2 cols = 4 per page instead, or rotate page
-  // CORRECT: A4 landscape is 297wide × 210tall
-  // 4 rows * 67.7 = 270.8 > 210 — doesn't fit
-  // So: 2 cols × 4 rows needs page height 270.8mm → use A4 PORTRAIT (210 × 297)
-  // A4 portrait: 210wide × 297tall
-  // 2 cols * 99.1 = 198.2 ✓ fits in 210mm width
-  // 4 rows * 67.7 = 270.8 ✓ fits in 297mm height
-  // marginL = (210 - 198.2) / 2 = 5.9mm
-  // marginT = (297 - 270.8) / 2 = 13.1mm
 
   const PAGE_W = 210;
   const PAGE_H = 297;
-  const MARGIN_LEFT = (PAGE_W - COLS * LW) / 2;   // ~5.9mm
-  const MARGIN_TOP  = 13;                           // 13mm from top edge
+
+  const MARGIN_LEFT = (PAGE_W - COLS * LW) / 2; // ~5.9mm
+  const MARGIN_TOP = 13; // ~13mm
 
   // ── Colours ───────────────────────────────────────────────────────────────
   const GREEN = [29, 107, 74];
   const BLACK = [26, 26, 26];
   const WHITE = [255, 255, 255];
-  const GREY  = [153, 153, 153];
-  const LGREY = [187, 187, 187];
-  const DKGREY= [26, 26, 26];
+  const DKGREY = [26, 26, 26];
+
+  // Darker greys for readability
+  const GREY = [90, 90, 90];
+  const LGREY = [120, 120, 120];
 
   // ── QR helper ─────────────────────────────────────────────────────────────
   async function getQRDataURL(url) {
@@ -124,14 +114,21 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
       const div = document.createElement('div');
       div.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
       document.body.appendChild(div);
+
       new window.QRCode(div, {
-        text: url, width: 256, height: 256,
-        colorDark: '#1D6B4A', colorLight: '#ffffff',
+        text: url,
+        width: 256,
+        height: 256,
+        colorDark: '#1D6B4A',
+        colorLight: '#ffffff',
         correctLevel: window.QRCode.CorrectLevel.H
       });
+
       setTimeout(() => {
         const el = div.querySelector('canvas') || div.querySelector('img');
-        const dataUrl = el ? (el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src) : '';
+        const dataUrl = el
+          ? (el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src)
+          : '';
         document.body.removeChild(div);
         resolve(dataUrl);
       }, 200);
@@ -140,10 +137,12 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
 
   async function getLogoDataURL() {
     return new Promise(resolve => {
-      const img = new Image(); img.crossOrigin = 'anonymous';
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
         const c = document.createElement('canvas');
-        c.width = img.width; c.height = img.height;
+        c.width = img.width;
+        c.height = img.height;
         c.getContext('2d').drawImage(img, 0, 0);
         resolve(c.toDataURL('image/png'));
       };
@@ -159,8 +158,9 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     ? [singleListing]
     : listings.filter(l => l.published);
 
-  // ── Create PDF — A4 portrait ──────────────────────────────────────────────
+  // ── Create PDF ────────────────────────────────────────────────────────────
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
   let labelIndex = 0;
 
   for (let i = 0; i < publishedListings.length; i++) {
@@ -172,113 +172,142 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     const col = pos % COLS;
     const row = Math.floor(pos / COLS);
 
-    // Top-left corner of this label (mm)
     const lx = MARGIN_LEFT + col * LW;
-    const ly = MARGIN_TOP  + row * LH;
+    const ly = MARGIN_TOP + row * LH;
 
-    // ── Internal layout ───────────────────────────────────────────────────
-    const GREEN_BAR_H = 2.8;   // top & bottom green stripe
-    const BLACK_BAR_H = 10.5;  // Scan Me bar
-    const QR_PADDING  = 2.5;   // padding around QR
-    const QR_SIZE     = LH - (GREEN_BAR_H * 2) - (BLACK_BAR_H) - (QR_PADDING * 2);
-    // QR_SIZE ≈ 67.7 - 2.8 - 2.8 - 10.5 - 5 = 46.6mm
+    // ── Tuned Layout ────────────────────────────────────────────────────────
+    const GREEN_BAR_H = 2.8;
+    const BLACK_BAR_H = 10.5;
+    const QR_PADDING = 2.8;
+
+    const QR_SIZE =
+      LH - GREEN_BAR_H * 2 - BLACK_BAR_H - QR_PADDING * 2;
+
     const QR_X = lx + QR_PADDING;
     const QR_Y = ly + GREEN_BAR_H + BLACK_BAR_H + QR_PADDING;
+
     const TEXT_X = lx + QR_SIZE + QR_PADDING * 3;
     const TEXT_W = LW - QR_SIZE - QR_PADDING * 4;
+
     const BODY_Y = ly + GREEN_BAR_H + BLACK_BAR_H;
     const BODY_H = LH - GREEN_BAR_H * 2 - BLACK_BAR_H;
-    const CENTRE_Y = BODY_Y + BODY_H / 2;
 
-    // ── White background ──────────────────────────────────────────────────
+    // Background
     doc.setFillColor(...WHITE);
     doc.rect(lx, ly, LW, LH, 'F');
 
-    // ── Green stripe TOP — full page width ───────────────────────────────
+    // Full‑bleed bars
     doc.setFillColor(...GREEN);
     doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
 
-    // ── Black bar — full page width ───────────────────────────────────────
     doc.setFillColor(...BLACK);
     doc.rect(0, ly + GREEN_BAR_H, PAGE_W, BLACK_BAR_H, 'F');
 
-    // ── Scan Me text ──────────────────────────────────────────────────────
+    doc.setFillColor(...GREEN);
+    doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
+
+    // Scan Me text (per‑label)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.setTextColor(...WHITE);
     doc.text(
-      'Scan Me  ·  Save Me  ·  Share Me',
-      PAGE_W / 2,
+      'Scan Me · Save Me · Share Me',
+      lx + LW / 2,
       ly + GREEN_BAR_H + BLACK_BAR_H / 2,
       { align: 'center', baseline: 'middle' }
     );
 
-    // ── Green stripe BOTTOM — full page width ──────────────────────────────
-    doc.setFillColor(...GREEN);
-    doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
-
-    // ── QR code ───────────────────────────────────────────────────────────
+    // QR code
     const qrUrl = `https://linqr.global/${listing.slug}`;
     const qrDataUrl = await getQRDataURL(qrUrl);
     if (qrDataUrl) {
       doc.addImage(qrDataUrl, 'PNG', QR_X, QR_Y, QR_SIZE, QR_SIZE);
     }
 
-    // ── LINQR badge centred on QR ─────────────────────────────────────────
+    // LINQR badge
     try {
       const badgeW = QR_SIZE * 0.55;
       const badgeH = QR_SIZE * 0.18;
       const badgeX = QR_X + (QR_SIZE - badgeW) / 2;
       const badgeY = QR_Y + (QR_SIZE - badgeH) / 2;
+
       doc.setFillColor(...GREEN);
       doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'F');
+
       doc.setDrawColor(...WHITE);
       doc.setLineWidth(0.3);
       doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'S');
+
       if (logoDataUrl) {
         const logoW = badgeW * 0.75;
         const logoH = badgeH * 0.65;
-        doc.addImage(logoDataUrl, 'PNG', badgeX + (badgeW - logoW) / 2, badgeY + (badgeH - logoH) / 2, logoW, logoH);
+        doc.addImage(
+          logoDataUrl,
+          'PNG',
+          badgeX + (badgeW - logoW) / 2,
+          badgeY + (badgeH - logoH) / 2,
+          logoW,
+          logoH
+        );
       } else {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(5);
         doc.setTextColor(...WHITE);
-        doc.text('®LINQR™', badgeX + badgeW / 2, badgeY + badgeH / 2, { align: 'center', baseline: 'middle' });
+        doc.text('®LINQR™', badgeX + badgeW / 2, badgeY + badgeH / 2, {
+          align: 'center',
+          baseline: 'middle'
+        });
       }
-    } catch(e) {}
+    } catch (e) {}
 
-    // ── Right text panel ──────────────────────────────────────────────────
-    // Dealer name — auto wrap if too long
+    // Dealer name
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setTextColor(...DKGREY);
-    const dealerLines = doc.splitTextToSize(dealer.name || '', TEXT_W);
-    doc.text(dealerLines, TEXT_X, BODY_Y + BODY_H * 0.25);
 
-    // Vehicle / listing name
-    const vehicleName = listing.listing_type === 'property'
-      ? (listing.address || '')
-      : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
+    const dealerLines = doc.splitTextToSize(dealer.name || '', TEXT_W);
+    doc.text(dealerLines, TEXT_X, BODY_Y + BODY_H * 0.22);
+
+    // Vehicle name
+    const vehicleName =
+      listing.listing_type === 'property'
+        ? listing.address || ''
+        : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...GREEN);
+
     const vehicleLines = doc.splitTextToSize(vehicleName, TEXT_W);
     doc.text(vehicleLines, TEXT_X, BODY_Y + BODY_H * 0.48);
 
     // Stock / ID
-    const stockLine = listing.listing_type === 'property'
-      ? `ID: ${listing.property_id || ''}`
-      : `Stock #${listing.stock_number}`;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.4);
     doc.setTextColor(...GREY);
-    doc.text(stockLine, TEXT_X + TEXT_W / 2, BODY_Y + BODY_H * 0.82, { align: 'center' });
+
+    const stockLine =
+      listing.listing_type === 'property'
+        ? `ID: ${listing.property_id || ''}`
+        : `Stock #${listing.stock_number}`;
+
+    doc.text(
+      stockLine,
+      TEXT_X + TEXT_W / 2,
+      BODY_Y + BODY_H * 0.82,
+      { align: 'center' }
+    );
 
     // Copyright
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(...LGREY);
-    doc.text("© LINQR 2026  ·  linqr.global", TEXT_X + TEXT_W / 2, BODY_Y + BODY_H * 0.93, { align: 'center' });
+    doc.text(
+      '© LINQR 2026 · linqr.global',
+      TEXT_X + TEXT_W / 2,
+      BODY_Y + BODY_H * 0.93,
+      { align: 'center' }
+    );
 
     labelIndex++;
   }
