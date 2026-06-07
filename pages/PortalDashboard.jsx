@@ -198,8 +198,9 @@ doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
 
 // Per‑label black bar (NOT full‑bleed)
 doc.setFillColor(...BLACK);
-doc.rect(lx, ly + GREEN_BAR_H, LW, BLACK_BAR_H, 'F');
-
+   
+doc.rect(lx - 4, ly + GREEN_BAR_H, LW + 8, BLACK_BAR_H, 'F');
+   
 // Scan Me text (inside per‑label black bar)
 doc.setFont('helvetica', 'bold');
 doc.setFontSize(15);
