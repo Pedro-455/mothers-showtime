@@ -182,12 +182,11 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     const QR_PADDING  = 2.5;   // padding around QR
     const QR_SIZE     = LH - (GREEN_BAR_H * 2) - (BLACK_BAR_H) - (QR_PADDING * 2);
     // QR_SIZE ≈ 67.7 - 2.8 - 2.8 - 10.5 - 5 = 46.6mm
-    const topGreenH = (row === 0) ? GREEN_BAR_H * 2 : GREEN_BAR_H;
     const QR_X = lx + QR_PADDING;
-    const QR_Y = ly + topGreenH + BLACK_BAR_H + QR_PADDING;
+    const QR_Y = ly + GREEN_BAR_H + BLACK_BAR_H + QR_PADDING;
     const TEXT_X = lx + QR_SIZE + QR_PADDING * 3;
     const TEXT_W = LW - QR_SIZE - QR_PADDING * 4;
-    const BODY_Y = ly + topGreenH + BLACK_BAR_H;
+    const BODY_Y = ly + GREEN_BAR_H + BLACK_BAR_H;
     const BODY_H = LH - GREEN_BAR_H * 2 - BLACK_BAR_H;
     const CENTRE_Y = BODY_Y + BODY_H / 2;
 
@@ -195,13 +194,13 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     doc.setFillColor(...WHITE);
     doc.rect(lx, ly, LW, LH, 'F');
 
-    // ── Green stripe TOP — full page width, thicker on very first row ─────
+    // ── Green stripe TOP — full page width ───────────────────────────────
     doc.setFillColor(...GREEN);
-    doc.rect(0, ly, PAGE_W, topGreenH, 'F');
+    doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
 
     // ── Black bar — full page width ───────────────────────────────────────
     doc.setFillColor(...BLACK);
-    doc.rect(0, ly + topGreenH, PAGE_W, BLACK_BAR_H, 'F');
+    doc.rect(0, ly + GREEN_BAR_H, PAGE_W, BLACK_BAR_H, 'F');
 
     // ── Scan Me text ──────────────────────────────────────────────────────
     doc.setFont('helvetica', 'bold');
@@ -210,7 +209,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     doc.text(
       'Scan Me  ·  Save Me  ·  Share Me',
       PAGE_W / 2,
-      ly + topGreenH + BLACK_BAR_H / 2,
+      ly + GREEN_BAR_H + BLACK_BAR_H / 2,
       { align: 'center', baseline: 'middle' }
     );
 
@@ -273,13 +272,13 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.4);
     doc.setTextColor(...GREY);
-    doc.text(stockLine, lx + LW - 3, BODY_Y + BODY_H * 0.82, { align: 'right' });
+    doc.text(stockLine, TEXT_X + TEXT_W / 2, BODY_Y + BODY_H * 0.82, { align: 'center' });
 
     // Copyright
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(...LGREY);
-    doc.text("© LINQR 2026  ·  linqr.global", lx + LW - 3, BODY_Y + BODY_H * 0.93, { align: 'right' });
+    doc.text("© LINQR 2026  ·  linqr.global", TEXT_X + TEXT_W / 2, BODY_Y + BODY_H * 0.93, { align: 'center' });
 
     labelIndex++;
   }
