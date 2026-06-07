@@ -187,31 +187,29 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
 
     const BODY_Y = ly + GREEN_BAR_H + BLACK_BAR_H;
     const BODY_H = LH - GREEN_BAR_H * 2 - BLACK_BAR_H;
+// Background
+doc.setFillColor(...WHITE);
+doc.rect(lx, ly, LW, LH, 'F');
 
-    // Background
-    doc.setFillColor(...WHITE);
-    doc.rect(lx, ly, LW, LH, 'F');
+// Full‑bleed green bars (top + bottom)
+doc.setFillColor(...GREEN);
+doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
+doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
 
-    // Full‑bleed bars (drawn FIRST)
-    doc.setFillColor(...GREEN);
-    doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
+// Per‑label black bar (NOT full‑bleed)
+doc.setFillColor(...BLACK);
+doc.rect(lx, ly + GREEN_BAR_H, LW, BLACK_BAR_H, 'F');
 
-    doc.setFillColor(...BLACK);
-    doc.rect(0, ly + GREEN_BAR_H, PAGE_W, BLACK_BAR_H, 'F');
-
-    doc.setFillColor(...GREEN);
-    doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
-
-    // Scan Me text (must be AFTER bars)
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
-    doc.setTextColor(...WHITE);
-    doc.text(
-      'Scan Me · Save Me · Share Me',
-      lx + LW / 2,
-      ly + GREEN_BAR_H + BLACK_BAR_H / 2,
-      { align: 'center', baseline: 'middle' }
-    );
+// Scan Me text (inside per‑label black bar)
+doc.setFont('helvetica', 'bold');
+doc.setFontSize(15);
+doc.setTextColor(...WHITE);
+doc.text(
+  'Scan Me · Save Me · Share Me',
+  lx + LW / 2,
+  ly + GREEN_BAR_H + BLACK_BAR_H / 2,
+  { align: 'center', baseline: 'middle' }
+);
 
     // QR code
     const qrUrl = `https://linqr.global/${listing.slug}`;
@@ -599,3 +597,4 @@ const styles = {
   footer:{textAlign:"center",padding:24},
   footerText:{fontSize:11,color:"#bbb",margin:0},
 };
+
