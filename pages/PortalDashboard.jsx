@@ -204,7 +204,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
 
     // ── Scan Me text ──────────────────────────────────────────────────────
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(15);
     doc.setTextColor(...WHITE);
     doc.text(
       'Scan Me  ·  Save Me  ·  Share Me',
@@ -250,7 +250,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     // ── Right text panel ──────────────────────────────────────────────────
     // Dealer name
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.setTextColor(...DKGREY);
     doc.text(dealer.name || '', TEXT_X, BODY_Y + BODY_H * 0.28);
 
