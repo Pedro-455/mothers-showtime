@@ -195,6 +195,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     // Background
     doc.setFillColor(...WHITE);
     doc.rect(lx, ly, LW, LH, 'F');
+
 // Full‑bleed bars
 doc.setFillColor(...GREEN);
 doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
@@ -216,8 +217,10 @@ doc.text(
   { align: 'center', baseline: 'middle' }
 );
 
+
     // QR code
     const qrUrl = `https://linqr.global/${listing.slug}`;
+
     const qrDataUrl = await getQRDataURL(qrUrl);
     if (qrDataUrl) {
       doc.addImage(qrDataUrl, 'PNG', QR_X, QR_Y, QR_SIZE, QR_SIZE);
