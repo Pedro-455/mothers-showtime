@@ -108,7 +108,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
   const PAGE_W = 210;
   const PAGE_H = 297;
   const MARGIN_LEFT = (PAGE_W - COLS * LW) / 2;   // ~5.9mm
-  const MARGIN_TOP  = (PAGE_H - ROWS * LH) / 2;   // ~13.1mm
+  const MARGIN_TOP  = 13;                           // 13mm from top edge
 
   // ── Colours ───────────────────────────────────────────────────────────────
   const GREEN = [29, 107, 74];
@@ -204,7 +204,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
 
     // ── Scan Me text ──────────────────────────────────────────────────────
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
+    doc.setFontSize(10);
     doc.setTextColor(...WHITE);
     doc.text(
       'Scan Me  ·  Save Me  ·  Share Me',
@@ -250,7 +250,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     // ── Right text panel ──────────────────────────────────────────────────
     // Dealer name
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
+    doc.setFontSize(10);
     doc.setTextColor(...DKGREY);
     doc.text(dealer.name || '', TEXT_X, BODY_Y + BODY_H * 0.28);
 
@@ -270,13 +270,13 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(...GREY);
-    doc.text(stockLine, lx + LW - QR_PADDING, BODY_Y + BODY_H * 0.82, { align: 'right' });
+    doc.text(stockLine, lx + LW - 3, BODY_Y + BODY_H * 0.82, { align: 'right' });
 
     // Copyright
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5);
     doc.setTextColor(...LGREY);
-    doc.text('© LINQR 2026  ·  linqr.global', lx + LW - QR_PADDING, BODY_Y + BODY_H * 0.93, { align: 'right' });
+    doc.text("© LINQR 2026  ·  linqr.global", lx + LW - 3, BODY_Y + BODY_H * 0.93, { align: 'right' });
 
     labelIndex++;
   }
