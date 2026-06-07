@@ -58,7 +58,6 @@ function mapCSVToListing(row, dealerId) {
     listing_url:row.stock_url||null, published:true,
   };
 }
-
 // ─── QR LABEL PDF GENERATOR ───────────────────────────────────────────────────
 // Avery 938207 — 99.1mm × 67.7mm — A4 portrait — 2 cols × 4 rows = 8 labels
 
@@ -87,24 +86,22 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
   const { jsPDF } = window.jspdf;
 
   // ── Dimensions ─────────────────────────────────────────────────────────────
-  const LW = 99.1;   // label width
-  const LH = 67.7;   // label height
+  const LW = 99.1;
+  const LH = 67.7;
   const COLS = 2;
   const ROWS = 4;
 
   const PAGE_W = 210;
   const PAGE_H = 297;
 
-  const MARGIN_LEFT = (PAGE_W - COLS * LW) / 2; // ~5.9mm
-  const MARGIN_TOP = 13; // ~13mm
+  const MARGIN_LEFT = (PAGE_W - COLS * LW) / 2;
+  const MARGIN_TOP = 13;
 
   // ── Colours ───────────────────────────────────────────────────────────────
   const GREEN = [29, 107, 74];
   const BLACK = [26, 26, 26];
   const WHITE = [255, 255, 255];
   const DKGREY = [26, 26, 26];
-
-  // Darker greys for readability
   const GREY = [90, 90, 90];
   const LGREY = [120, 120, 120];
 
@@ -180,8 +177,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     const BLACK_BAR_H = 10.5;
     const QR_PADDING = 2.8;
 
-    const QR_SIZE =
-      LH - GREEN_BAR_H * 2 - BLACK_BAR_H - QR_PADDING * 2;
+    const QR_SIZE = LH - GREEN_BAR_H * 2 - BLACK_BAR_H - QR_PADDING * 2;
 
     const QR_X = lx + QR_PADDING;
     const QR_Y = ly + GREEN_BAR_H + BLACK_BAR_H + QR_PADDING;
@@ -196,31 +192,29 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     doc.setFillColor(...WHITE);
     doc.rect(lx, ly, LW, LH, 'F');
 
-// Full‑bleed bars
-doc.setFillColor(...GREEN);
-doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
+    // Full‑bleed bars (drawn FIRST)
+    doc.setFillColor(...GREEN);
+    doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
 
-doc.setFillColor(...BLACK);
-doc.rect(0, ly + GREEN_BAR_H, PAGE_W, BLACK_BAR_H, 'F');
+    doc.setFillColor(...BLACK);
+    doc.rect(0, ly + GREEN_BAR_H, PAGE_W, BLACK_BAR_H, 'F');
 
-doc.setFillColor(...GREEN);
-doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
+    doc.setFillColor(...GREEN);
+    doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
 
-// Scan Me text (per‑label)
-doc.setFont('helvetica', 'bold');
-doc.setFontSize(15);
-doc.setTextColor(...WHITE);
-doc.text(
-  'Scan Me · Save Me · Share Me',
-  lx + LW / 2,
-  ly + GREEN_BAR_H + BLACK_BAR_H / 2,
-  { align: 'center', baseline: 'middle' }
-);
-
+    // Scan Me text (must be AFTER bars)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(...WHITE);
+    doc.text(
+      'Scan Me · Save Me · Share Me',
+      lx + LW / 2,
+      ly + GREEN_BAR_H + BLACK_BAR_H / 2,
+      { align: 'center', baseline: 'middle' }
+    );
 
     // QR code
     const qrUrl = `https://linqr.global/${listing.slug}`;
-
     const qrDataUrl = await getQRDataURL(qrUrl);
     if (qrDataUrl) {
       doc.addImage(qrDataUrl, 'PNG', QR_X, QR_Y, QR_SIZE, QR_SIZE);
@@ -320,6 +314,13 @@ doc.text(
 
   doc.save(filename);
 }
+
+
+
+
+
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddProperty, onEdit }) {
