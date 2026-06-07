@@ -59,27 +59,20 @@ function mapCSVToListing(row, dealerId) {
   };
 }
 
-// ─── QR LABEL PRINT GENERATOR ─────────────────────────────────────────────────
-// Opens a new browser tab with SVG labels ready to print
-// Avery 938207 — 8 per A4 landscape sheet (2 cols x 4 rows)
-// Each label 99.1mm wide x 67.7mm tall on sheet
-// When peeled: 67.7mm wide x 99.1mm tall portrait
-//
-// Uses our EXACT locked SVG coordinates:
-//   viewBox per label: 0 0 680 465
-//   Black bar: x=20 w=72 h=425
-//   QR: x=156 y=80 w=300 h=350
-//   LINQR badge: translate(306,255) rotate(-90)
-//   Green bar top: y=20 h=16
-//   Green bar bot: y=429 h=16
-//   Text: dealer x=510, model x=558, stock x=596, copy x=618 — all y=232 rotate(-90)
+// ─── QR LABEL PDF GENERATOR ───────────────────────────────────────────────────
+// Avery 938207 — 99.1mm wide × 67.7mm tall
+// A4 landscape — 2 cols × 4 rows = 8 labels per sheet
+// Pure landscape label — NO rotation needed anywhere
+// Green stripe top & bottom, black Scan Me bar, QR left, text right
 
-async function generateLabelPDF(listings, dealer) {
-  // Open window FIRST (synchronously within click handler) so browser doesn't block it
-  const win = window.open('', '_blank');
-  win.document.write('<html><body style="background:#1D6B4A;color:white;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><h2>⏳ Generating labels, please wait...</h2></body></html>');
-  win.document.close();
-
+async function generateLabelPDF(listings, dealer, singleListing = null) {
+  await new Promise((resolve, reject) => {
+    if (window.jspdf) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
   await new Promise((resolve, reject) => {
     if (window.QRCode) return resolve();
     const s = document.createElement('script');
@@ -88,9 +81,44 @@ async function generateLabelPDF(listings, dealer) {
     document.head.appendChild(s);
   });
 
-  const published = listings.filter(l => l.published);
+  const { jsPDF } = window.jspdf;
 
-  // Generate all QR data URLs up front
+  // ── Dimensions (all mm) ───────────────────────────────────────────────────
+  const LW = 99.1;   // label width
+  const LH = 67.7;   // label height
+  const COLS = 2;
+  const ROWS = 4;
+  // A4 landscape: 297 × 210mm
+  // 2 cols: (297 - 2*LW) / 2 = (297 - 198.2) / 2 = 49.4mm — too much
+  // Centre them: marginL = (297 - 2*99.1) / 2 = 49.4/2 = 24.35mm... let's snap to edge
+  // Labels touch — no gap between labels
+  const MARGIN_L = (297 - COLS * LW) / 2;  // ~49.4mm each side — centres on page
+  const MARGIN_T = (210 - ROWS * LH) / 2;  // ~(210-270.8)/2 — labels overflow, use 0
+  // Actually 4 * 67.7 = 270.8 > 210mm — won't fit 4 rows on landscape A4!
+  // Use 2 rows × 2 cols = 4 per page instead, or rotate page
+  // CORRECT: A4 landscape is 297wide × 210tall
+  // 4 rows * 67.7 = 270.8 > 210 — doesn't fit
+  // So: 2 cols × 4 rows needs page height 270.8mm → use A4 PORTRAIT (210 × 297)
+  // A4 portrait: 210wide × 297tall
+  // 2 cols * 99.1 = 198.2 ✓ fits in 210mm width
+  // 4 rows * 67.7 = 270.8 ✓ fits in 297mm height
+  // marginL = (210 - 198.2) / 2 = 5.9mm
+  // marginT = (297 - 270.8) / 2 = 13.1mm
+
+  const PAGE_W = 210;
+  const PAGE_H = 297;
+  const MARGIN_LEFT = (PAGE_W - COLS * LW) / 2;   // ~5.9mm
+  const MARGIN_TOP  = (PAGE_H - ROWS * LH) / 2;   // ~13.1mm
+
+  // ── Colours ───────────────────────────────────────────────────────────────
+  const GREEN = [29, 107, 74];
+  const BLACK = [26, 26, 26];
+  const WHITE = [255, 255, 255];
+  const GREY  = [153, 153, 153];
+  const LGREY = [187, 187, 187];
+  const DKGREY= [26, 26, 26];
+
+  // ── QR helper ─────────────────────────────────────────────────────────────
   async function getQRDataURL(url) {
     return new Promise(resolve => {
       const div = document.createElement('div');
@@ -106,125 +134,158 @@ async function generateLabelPDF(listings, dealer) {
         const dataUrl = el ? (el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src) : '';
         document.body.removeChild(div);
         resolve(dataUrl);
-      }, 150);
+      }, 200);
     });
   }
 
-  // Pre-generate all QR codes with progress update
-  const qrDataUrls = [];
-  for (let i = 0; i < published.length; i++) {
-    const url = `https://linqr.global/${published[i].slug}`;
-    const dataUrl = await getQRDataURL(url);
-    qrDataUrls.push(dataUrl);
-    try {
-      win.document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#1D6B4A;color:white;font-family:Arial,sans-serif;flex-direction:column;gap:16px;"><h2>⏳ Generating labels...</h2><p style="font-size:18px;">${i + 1} of ${published.length} QR codes</p></div>`;
-    } catch(e) {}
+  async function getLogoDataURL() {
+    return new Promise(resolve => {
+      const img = new Image(); img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.width; c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(null);
+      img.src = '/LINQR-logo.png';
+    });
   }
 
-  // Build one SVG label using exact locked coordinates
-  function buildLabel(listing, qrDataUrl, offsetX, offsetY) {
+  const logoDataUrl = await getLogoDataURL();
+
+  // ── Determine listings to print ───────────────────────────────────────────
+  const publishedListings = singleListing
+    ? [singleListing]
+    : listings.filter(l => l.published);
+
+  // ── Create PDF — A4 portrait ──────────────────────────────────────────────
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  let labelIndex = 0;
+
+  for (let i = 0; i < publishedListings.length; i++) {
+    const listing = publishedListings[i];
+
+    if (labelIndex > 0 && labelIndex % (COLS * ROWS) === 0) doc.addPage();
+
+    const pos = labelIndex % (COLS * ROWS);
+    const col = pos % COLS;
+    const row = Math.floor(pos / COLS);
+
+    // Top-left corner of this label (mm)
+    const lx = MARGIN_LEFT + col * LW;
+    const ly = MARGIN_TOP  + row * LH;
+
+    // ── Internal layout ───────────────────────────────────────────────────
+    const GREEN_BAR_H = 2.8;   // top & bottom green stripe
+    const BLACK_BAR_H = 10.5;  // Scan Me bar
+    const QR_PADDING  = 2.5;   // padding around QR
+    const QR_SIZE     = LH - (GREEN_BAR_H * 2) - (BLACK_BAR_H) - (QR_PADDING * 2);
+    // QR_SIZE ≈ 67.7 - 2.8 - 2.8 - 10.5 - 5 = 46.6mm
+    const QR_X = lx + QR_PADDING;
+    const QR_Y = ly + GREEN_BAR_H + BLACK_BAR_H + QR_PADDING;
+    const TEXT_X = lx + QR_SIZE + QR_PADDING * 3;
+    const TEXT_W = LW - QR_SIZE - QR_PADDING * 4;
+    const BODY_Y = ly + GREEN_BAR_H + BLACK_BAR_H;
+    const BODY_H = LH - GREEN_BAR_H * 2 - BLACK_BAR_H;
+    const CENTRE_Y = BODY_Y + BODY_H / 2;
+
+    // ── White background ──────────────────────────────────────────────────
+    doc.setFillColor(...WHITE);
+    doc.rect(lx, ly, LW, LH, 'F');
+
+    // ── Green stripe TOP ──────────────────────────────────────────────────
+    doc.setFillColor(...GREEN);
+    doc.rect(lx, ly, LW, GREEN_BAR_H, 'F');
+
+    // ── Black bar ─────────────────────────────────────────────────────────
+    doc.setFillColor(...BLACK);
+    doc.rect(lx, ly + GREEN_BAR_H, LW, BLACK_BAR_H, 'F');
+
+    // ── Scan Me text ──────────────────────────────────────────────────────
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...WHITE);
+    doc.text(
+      'Scan Me  ·  Save Me  ·  Share Me',
+      lx + LW / 2,
+      ly + GREEN_BAR_H + BLACK_BAR_H / 2,
+      { align: 'center', baseline: 'middle' }
+    );
+
+    // ── Green stripe BOTTOM ───────────────────────────────────────────────
+    doc.setFillColor(...GREEN);
+    doc.rect(lx, ly + LH - GREEN_BAR_H, LW, GREEN_BAR_H, 'F');
+
+    // ── QR code ───────────────────────────────────────────────────────────
+    const qrUrl = `https://linqr.global/${listing.slug}`;
+    const qrDataUrl = await getQRDataURL(qrUrl);
+    if (qrDataUrl) {
+      doc.addImage(qrDataUrl, 'PNG', QR_X, QR_Y, QR_SIZE, QR_SIZE);
+    }
+
+    // ── LINQR badge centred on QR ─────────────────────────────────────────
+    try {
+      const badgeW = QR_SIZE * 0.55;
+      const badgeH = QR_SIZE * 0.18;
+      const badgeX = QR_X + (QR_SIZE - badgeW) / 2;
+      const badgeY = QR_Y + (QR_SIZE - badgeH) / 2;
+      doc.setFillColor(...GREEN);
+      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'F');
+      doc.setDrawColor(...WHITE);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'S');
+      if (logoDataUrl) {
+        const logoW = badgeW * 0.75;
+        const logoH = badgeH * 0.65;
+        doc.addImage(logoDataUrl, 'PNG', badgeX + (badgeW - logoW) / 2, badgeY + (badgeH - logoH) / 2, logoW, logoH);
+      } else {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(5);
+        doc.setTextColor(...WHITE);
+        doc.text('®LINQR™', badgeX + badgeW / 2, badgeY + badgeH / 2, { align: 'center', baseline: 'middle' });
+      }
+    } catch(e) {}
+
+    // ── Right text panel ──────────────────────────────────────────────────
+    // Dealer name
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...DKGREY);
+    doc.text(dealer.name || '', TEXT_X, BODY_Y + BODY_H * 0.28);
+
+    // Vehicle / listing name
     const vehicleName = listing.listing_type === 'property'
       ? (listing.address || '')
       : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...GREEN);
+    doc.text(vehicleName, TEXT_X, BODY_Y + BODY_H * 0.48, { maxWidth: TEXT_W });
+
+    // Stock / ID
     const stockLine = listing.listing_type === 'property'
       ? `ID: ${listing.property_id || ''}`
       : `Stock #${listing.stock_number}`;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(...GREY);
+    doc.text(stockLine, lx + LW - QR_PADDING, BODY_Y + BODY_H * 0.82, { align: 'right' });
 
-    // Each label SVG is 680x465 units, placed via transform
-    return `
-      <g transform="translate(${offsetX},${offsetY})">
-        <rect x="20" y="20" width="640" height="425" fill="white" stroke="#1D6B4A" stroke-width="2"/>
-        <rect x="20" y="20" width="72" height="425" fill="#1a1a1a"/>
-        <text font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="white" text-anchor="middle" letter-spacing="2" transform="translate(56,232) rotate(-90)">Scan Me  ·  Save Me  ·  Share Me</text>
-        <rect x="20" y="20" width="640" height="16" fill="#1D6B4A"/>
-        <rect x="20" y="429" width="640" height="16" fill="#1D6B4A"/>
-        ${qrDataUrl ? `<image href="${qrDataUrl}" x="156" y="80" width="300" height="350"/>` : ''}
-        <g transform="translate(306,255) rotate(-90)">
-          <rect x="-42" y="-14" width="84" height="28" rx="4" fill="#1D6B4A"/>
-          <rect x="-42" y="-14" width="84" height="28" rx="4" fill="none" stroke="white" stroke-width="1"/>
-          <text font-family="Arial,sans-serif" font-size="14" font-weight="900" fill="white" text-anchor="middle" dominant-baseline="central">®LINQR™</text>
-        </g>
-        <text font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central" transform="translate(510,232) rotate(-90)">${dealer.name || ''}</text>
-        <text font-family="Arial,sans-serif" font-size="26" font-weight="900" fill="#1D6B4A" text-anchor="middle" dominant-baseline="central" transform="translate(558,232) rotate(-90)">${vehicleName}</text>
-        <text font-family="Arial,sans-serif" font-size="16" font-weight="400" fill="#666666" text-anchor="middle" dominant-baseline="central" transform="translate(596,232) rotate(-90)">${stockLine}</text>
-        <text font-family="Arial,sans-serif" font-size="12" fill="#aaaaaa" text-anchor="middle" dominant-baseline="central" transform="translate(618,232) rotate(-90)">© LINQR 2026 · linqr.global</text>
-      </g>`;
+    // Copyright
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5);
+    doc.setTextColor(...LGREY);
+    doc.text('© LINQR 2026  ·  linqr.global', lx + LW - QR_PADDING, BODY_Y + BODY_H * 0.93, { align: 'right' });
+
+    labelIndex++;
   }
 
-  // Build one sheet SVG — 2 cols x 4 rows = 8 labels
-  // Each label is 680x465 SVG units
-  // Sheet SVG viewBox = 1380x1860 (2*680 + gap, 4*465)
-  // We map this to 297mm x 210mm via CSS (A4 landscape)
-  function buildSheet(labelSet) {
-    const positions = [
-      [0,    0],   // row1 col1
-      [680,  0],   // row1 col2
-      [0,    465], // row2 col1
-      [680,  465], // row2 col2
-      [0,    930], // row3 col1
-      [680,  930], // row3 col2
-      [0,    1395],// row4 col1
-      [680,  1395],// row4 col2
-    ];
-    const labels = labelSet.map((item, i) =>
-      buildLabel(item.listing, item.qrDataUrl, positions[i][0], positions[i][1])
-    ).join('');
+  const filename = singleListing
+    ? `${dealer.code}-label-${singleListing.stock_number || singleListing.property_id}.pdf`
+    : `${dealer.code}-QR-Labels-8up.pdf`;
 
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 1860" style="width:297mm;height:210mm;display:block;">${labels}</svg>`;
-  }
-
-  // Split into pages of 8
-  const pages = [];
-  for (let i = 0; i < published.length; i += 8) {
-    const chunk = published.slice(i, i + 8).map((listing, j) => ({
-      listing,
-      qrDataUrl: qrDataUrls[i + j]
-    }));
-    pages.push(buildSheet(chunk));
-  }
-
-  // Build full HTML string and inject into already-open window
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<title>${dealer.code} QR Labels</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: white; }
-  @page { size: A4 landscape; margin: 0; }
-  @media print {
-    body { margin: 0; }
-    .page { page-break-after: always; }
-    .page:last-child { page-break-after: avoid; }
-    .no-print { display: none; }
-  }
-  .no-print {
-    background: #1D6B4A; color: white; padding: 12px 24px;
-    font-family: Arial, sans-serif; font-size: 14px;
-    display: flex; align-items: center; gap: 16px;
-  }
-  .no-print button {
-    background: white; color: #1D6B4A; border: none;
-    padding: 8px 20px; font-size: 14px; font-weight: 700;
-    border-radius: 6px; cursor: pointer;
-  }
-  .page {
-    width: 297mm; height: 210mm; overflow: hidden;
-    display: flex; align-items: center; justify-content: center;
-  }
-</style>
-</head>
-<body>
-<div class="no-print">
-  <span>✅ ${published.length} labels ready — ${pages.length} sheet${pages.length !== 1 ? 's' : ''} · A4 Landscape · Margins: None · Scale: 100%</span>
-  <button onclick="window.print()">🖨️ Print Now</button>
-</div>
-${pages.map(p => `<div class="page">${p}</div>`).join('\n')}
-</body>
-</html>`;
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  doc.save(filename);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -263,7 +324,14 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
     const published=listings.filter(l=>l.published);
     if(published.length===0){ alert("No live listings to print labels for."); return; }
     setGeneratingLabels(true);
-    try { await generateLabelPDF(listings,dealer); }
+    try { await generateLabelPDF(listings, dealer); }
+    catch(e){ console.error(e); alert("Label generation failed: "+e.message); }
+    finally{ setGeneratingLabels(false); }
+  }
+
+  async function handlePrintSingleLabel(listing) {
+    setGeneratingLabels(true);
+    try { await generateLabelPDF(listings, dealer, listing); }
     catch(e){ console.error(e); alert("Label generation failed: "+e.message); }
     finally{ setGeneratingLabels(false); }
   }
@@ -313,14 +381,14 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
     setDownloadingLeads(true);
     try {
       const fromDate=new Date(); fromDate.setDate(fromDate.getDate()-leadDays); const fromISO=fromDate.toISOString();
-      const slugs=listings.map(l=>l.slug); const dealerCode=dealer.code.toLowerCase();
-      if(slugs.length===0){ alert("No listings found for this dealer."); setDownloadingLeads(false); return; }
+      const dealerCode=dealer.code.toLowerCase();
+      if(listings.length===0){ alert("No listings found for this dealer."); setDownloadingLeads(false); return; }
       const res=await fetch(`${OLD_SUPABASE_URL}/rest/v1/sellsheet_contacts?created_at=gte.${fromISO}&order=created_at.desc&select=*`,{ headers:{"apikey":OLD_ANON_KEY,"Authorization":`Bearer ${OLD_ANON_KEY}`} });
       const allLeads=await res.json();
       const excludeEmails=["pe@mothers.co.nz","pemothersnz@gmail.com",dealer.email].filter(Boolean).map(e=>e.toLowerCase());
-      const dealerLeads=(allLeads||[]).filter(lead=>{ 
-        if(!lead.car_url) return false; 
-        if(excludeEmails.includes((lead.email||"").toLowerCase())) return false; 
+      const dealerLeads=(allLeads||[]).filter(lead=>{
+        if(!lead.car_url) return false;
+        if(excludeEmails.includes((lead.email||"").toLowerCase())) return false;
         return lead.car_url.includes(`/${dealerCode}-`);
       });
       if(dealerLeads.length===0){ alert(`No leads found in the last ${leadDays} days.`); setDownloadingLeads(false); return; }
@@ -397,10 +465,10 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
       <div style={{background:'#fff',borderBottom:'1px solid #eee',padding:'14px 24px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
         <div style={{fontSize:13,fontWeight:700,color:'#333',fontFamily:'Georgia, serif'}}>🏷️ Print QR Labels</div>
         <button onClick={handlePrintLabels} disabled={generatingLabels} style={{background:generatingLabels?'#aaa':'#1B6157',color:'#fff',border:'none',borderRadius:6,padding:'8px 18px',fontSize:13,fontWeight:700,cursor:generatingLabels?'not-allowed':'pointer',fontFamily:'Georgia, serif'}}>
-          {generatingLabels?'Generating...':'🖨️ Print All Labels'}
+          {generatingLabels?'Generating PDF...':'🖨️ Print All Labels'}
         </button>
         <span style={{fontSize:12,color:'#aaa',fontFamily:'Georgia, serif'}}>
-          Avery 938207 · 8 per sheet · {listings.filter(l=>l.published).length} live listings · {Math.ceil(listings.filter(l=>l.published).length/8)} sheet{Math.ceil(listings.filter(l=>l.published).length/8)!==1?'s':''} · opens in new tab
+          Avery 938207 · 99.1×67.7mm · 8 per sheet · {listings.filter(l=>l.published).length} live listings · {Math.ceil(listings.filter(l=>l.published).length/8)} sheet{Math.ceil(listings.filter(l=>l.published).length/8)!==1?'s':''}
         </span>
       </div>
 
@@ -446,6 +514,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
               <div style={{...styles.statusBadge,background:listing.published?"#d4edda":"#fff3cd",color:listing.published?"#155724":"#856404"}}>{listing.published?"● Live":"○ Draft"}</div>
               <button style={styles.actionBtn} onClick={()=>togglePublished(listing)}>{listing.published?"Unpublish":"Publish"}</button>
               <button style={styles.actionBtn} onClick={()=>onEdit(listing)}>Edit</button>
+              <button style={{...styles.actionBtn,color:'#1B6157',fontWeight:700}} onClick={()=>handlePrintSingleLabel(listing)}>🏷️ Label</button>
               <button style={{...styles.actionBtn,color:"#cc0000"}} onClick={()=>deleteListing(listing.id)}>Delete</button>
             </div>
           </div>
