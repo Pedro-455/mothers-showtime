@@ -182,11 +182,12 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     const QR_PADDING  = 2.5;   // padding around QR
     const QR_SIZE     = LH - (GREEN_BAR_H * 2) - (BLACK_BAR_H) - (QR_PADDING * 2);
     // QR_SIZE ≈ 67.7 - 2.8 - 2.8 - 10.5 - 5 = 46.6mm
+    const topGreenH = (row === 0) ? GREEN_BAR_H * 2 : GREEN_BAR_H;
     const QR_X = lx + QR_PADDING;
-    const QR_Y = ly + GREEN_BAR_H + BLACK_BAR_H + QR_PADDING;
+    const QR_Y = ly + topGreenH + BLACK_BAR_H + QR_PADDING;
     const TEXT_X = lx + QR_SIZE + QR_PADDING * 3;
     const TEXT_W = LW - QR_SIZE - QR_PADDING * 4;
-    const BODY_Y = ly + GREEN_BAR_H + BLACK_BAR_H;
+    const BODY_Y = ly + topGreenH + BLACK_BAR_H;
     const BODY_H = LH - GREEN_BAR_H * 2 - BLACK_BAR_H;
     const CENTRE_Y = BODY_Y + BODY_H / 2;
 
@@ -194,13 +195,13 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     doc.setFillColor(...WHITE);
     doc.rect(lx, ly, LW, LH, 'F');
 
-    // ── Green stripe TOP ──────────────────────────────────────────────────
+    // ── Green stripe TOP — full page width, thicker on very first row ─────
     doc.setFillColor(...GREEN);
-    doc.rect(lx, ly, LW, GREEN_BAR_H, 'F');
+    doc.rect(0, ly, PAGE_W, topGreenH, 'F');
 
-    // ── Black bar ─────────────────────────────────────────────────────────
+    // ── Black bar — full page width ───────────────────────────────────────
     doc.setFillColor(...BLACK);
-    doc.rect(lx, ly + GREEN_BAR_H, LW, BLACK_BAR_H, 'F');
+    doc.rect(0, ly + topGreenH, PAGE_W, BLACK_BAR_H, 'F');
 
     // ── Scan Me text ──────────────────────────────────────────────────────
     doc.setFont('helvetica', 'bold');
@@ -208,14 +209,14 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     doc.setTextColor(...WHITE);
     doc.text(
       'Scan Me  ·  Save Me  ·  Share Me',
-      lx + LW / 2,
-      ly + GREEN_BAR_H + BLACK_BAR_H / 2,
+      PAGE_W / 2,
+      ly + topGreenH + BLACK_BAR_H / 2,
       { align: 'center', baseline: 'middle' }
     );
 
-    // ── Green stripe BOTTOM ───────────────────────────────────────────────
+    // ── Green stripe BOTTOM — full page width ──────────────────────────────
     doc.setFillColor(...GREEN);
-    doc.rect(lx, ly + LH - GREEN_BAR_H, LW, GREEN_BAR_H, 'F');
+    doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
 
     // ── QR code ───────────────────────────────────────────────────────────
     const qrUrl = `https://linqr.global/${listing.slug}`;
