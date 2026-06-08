@@ -56,11 +56,15 @@ export default function CallbackRequest() {
         ? listing?.address || slug
         : `${listing?.year || ""} ${listing?.make || ""} ${listing?.model || ""}`.trim() || slug;
 
-      const res = await fetch(OLD_EDGE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "callback",
+const res = await fetch(OLD_EDGE_URL, {
+  method: "POST",
+  headers: { 
+    "Content-Type": "application/json",
+    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeW1qbmpwcXZndG94b2ZuZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzI1MTAsImV4cCI6MjA3MzE0ODUxMH0.RqBItIZ-Iz_XhKcJNsJSR6e3n5jxW_YKHWGHO5j1z2c"
+  },
+  body: JSON.stringify({
+
+                type: "callback",
           name,
           mobile: mobile.trim(),
           carName: listingName,
