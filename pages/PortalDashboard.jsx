@@ -8,7 +8,6 @@ const OLD_SUPABASE_URL = "https://sfymjnjpqvgtoxofndzx.supabase.co";
 const OLD_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeW1qbmpwcXZndG94b2ZuZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzI1MTAsImV4cCI6MjA3MzE0ODUxMH0.RqBItIZ-Iz_XhKcJNsJSR6e3n5jxW_YKHWGHO5j1z2c";
 
 // ─── COLOUR HELPERS ───────────────────────────────────────────────────────────
-// Convert hex string to [r, g, b] array
 function hexToRgb(hex) {
   const clean = hex.replace('#', '');
   const r = parseInt(clean.substring(0, 2), 16);
@@ -17,38 +16,29 @@ function hexToRgb(hex) {
   return [r, g, b];
 }
 
-// Perceived brightness 0-255. Above 160 = too light for QR/dark-on-light use
 function brightness(hex) {
   const [r, g, b] = hexToRgb(hex);
   return (r * 299 + g * 587 + b * 114) / 1000;
 }
 
-// For a given brand colour, return the full label colour scheme
 function getLabelColours(brandHex) {
-  const LINQR_GREEN = [29, 107, 74];   // always used for LINQR badge background
+  const LINQR_GREEN = [29, 107, 74];
   const BLACK       = [26, 26, 26];
   const WHITE       = [255, 255, 255];
   const GREY        = [90, 90, 90];
   const LGREY       = [120, 120, 120];
-
   const brandRgb    = hexToRgb(brandHex);
-  const isLight     = brightness(brandHex) > 160;  // yellow, white etc
-
+  const isLight     = brightness(brandHex) > 160;
   return {
-    // Stripe top & bottom — always brand colour
-    stripe: brandRgb,
-    // QR code dark colour — brand if dark enough, else black
-    qrDark: isLight ? BLACK : brandRgb,
-    // Vehicle name text on label — brand if dark enough, else black
+    stripe:      brandRgb,
+    qrDark:      isLight ? BLACK : brandRgb,
     vehicleText: isLight ? BLACK : brandRgb,
-    // LINQR badge — always LINQR green regardless of dealer
-    badge: LINQR_GREEN,
-    // These never change
-    black: BLACK,
-    white: WHITE,
-    grey: GREY,
-    lgrey: LGREY,
-    dkgrey: BLACK,
+    badge:       LINQR_GREEN,
+    black:       BLACK,
+    white:       WHITE,
+    grey:        GREY,
+    lgrey:       LGREY,
+    dkgrey:      BLACK,
   };
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,10 +98,10 @@ function mapCSVToListing(row, dealerId) {
 // ─── QR LABEL PDF GENERATOR ───────────────────────────────────────────────────
 // Avery 938207 — 99.1mm × 67.7mm — A4 portrait — 2 cols × 4 rows = 8 labels
 // Colours driven by dealer.brand_colour — one file works for all dealers
+// Badge: outer rect matches QR colour (blends in), inner badge always LINQR green
 
 async function generateLabelPDF(listings, dealer, singleListing = null) {
 
-  // Load jsPDF
   await new Promise((resolve, reject) => {
     if (window.jspdf) return resolve();
     const s = document.createElement('script');
@@ -120,7 +110,6 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     document.head.appendChild(s);
   });
 
-  // Load QRCode library
   await new Promise((resolve, reject) => {
     if (window.QRCode) return resolve();
     const s = document.createElement('script');
@@ -131,11 +120,9 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
 
   const { jsPDF } = window.jspdf;
 
-  // ── Colour scheme from dealer brand colour ────────────────────────────────
   const brandHex = dealer.brand_colour || '#1D6B4A';
   const C = getLabelColours(brandHex);
 
-  // ── Dimensions ─────────────────────────────────────────────────────────────
   const LW = 99.1;
   const LH = 67.7;
   const COLS = 2;
@@ -143,7 +130,6 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
   const MARGIN_LEFT = (PAGE_W - COLS * LW) / 2;
   const MARGIN_TOP = 13;
 
-  // ── QR helper — uses dealer's QR dark colour ───────────────────────────────
   async function getQRDataURL(url) {
     const qrColour = `rgb(${C.qrDark[0]},${C.qrDark[1]},${C.qrDark[2]})`;
     return new Promise(resolve => {
@@ -151,11 +137,8 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
       div.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
       document.body.appendChild(div);
       new window.QRCode(div, {
-        text: url,
-        width: 256,
-        height: 256,
-        colorDark: qrColour,
-        colorLight: '#ffffff',
+        text: url, width: 256, height: 256,
+        colorDark: qrColour, colorLight: '#ffffff',
         correctLevel: window.QRCode.CorrectLevel.H
       });
       setTimeout(() => {
@@ -182,13 +165,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
   }
 
   const logoDataUrl = await getLogoDataURL();
-
-  // ── Determine listings to print ───────────────────────────────────────────
-  const publishedListings = singleListing
-    ? [singleListing]
-    : listings.filter(l => l.published);
-
-  // ── Create PDF ────────────────────────────────────────────────────────────
+  const publishedListings = singleListing ? [singleListing] : listings.filter(l => l.published);
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   let labelIndex = 0;
 
@@ -200,11 +177,9 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     const pos = labelIndex % (COLS * 4);
     const col = pos % COLS;
     const row = Math.floor(pos / COLS);
-
     const lx = MARGIN_LEFT + col * LW;
     const ly = MARGIN_TOP + row * LH;
 
-    // ── Layout constants ──────────────────────────────────────────────────
     const GREEN_BAR_H = 2.8;
     const BLACK_BAR_H = 10.5;
     const QR_PADDING  = 2.8;
@@ -220,7 +195,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     doc.setFillColor(...C.white);
     doc.rect(lx, ly, LW, LH, 'F');
 
-    // Green stripes top & bottom — full page width — brand colour
+    // Brand colour stripes top & bottom — full page width
     doc.setFillColor(...C.stripe);
     doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
     doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
@@ -233,28 +208,28 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     doc.setTextColor(...C.white);
-    doc.text(
-      'Scan Me · Save Me · Share Me',
-      lx + LW / 2,
-      ly + GREEN_BAR_H + BLACK_BAR_H / 2,
-      { align: 'center', baseline: 'middle' }
-    );
+    doc.text('Scan Me · Save Me · Share Me', lx + LW / 2, ly + GREEN_BAR_H + BLACK_BAR_H / 2, { align: 'center', baseline: 'middle' });
 
     // QR code
     const qrUrl = `https://linqr.global/${listing.slug}`;
     const qrDataUrl = await getQRDataURL(qrUrl);
-    if (qrDataUrl) {
-      doc.addImage(qrDataUrl, 'PNG', QR_X, QR_Y, QR_SIZE, QR_SIZE);
-    }
+    if (qrDataUrl) doc.addImage(qrDataUrl, 'PNG', QR_X, QR_Y, QR_SIZE, QR_SIZE);
 
-    // LINQR badge — always LINQR green, sits on QR code centre
+    // ── LINQR badge ───────────────────────────────────────────────────────
+    // Outer rect matches QR dark colour — blends into QR, hides any colour bleed
+    // Inner badge always LINQR green — brand identity preserved
     try {
       const badgeW = QR_SIZE * 0.55;
       const badgeH = QR_SIZE * 0.18;
       const badgeX = QR_X + (QR_SIZE - badgeW) / 2;
       const badgeY = QR_Y + (QR_SIZE - badgeH) / 2;
 
-      doc.setFillColor(...C.badge);   // always LINQR green
+      // Outer rectangle — matches QR colour so no visible background box
+      doc.setFillColor(...C.qrDark);
+      doc.roundedRect(badgeX - 1, badgeY - 1, badgeW + 2, badgeH + 2, 1.4, 1.4, 'F');
+
+      // Inner badge — always LINQR green
+      doc.setFillColor(...C.badge);
       doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'F');
       doc.setDrawColor(...C.white);
       doc.setLineWidth(0.3);
@@ -279,7 +254,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     const dealerLines = doc.splitTextToSize(dealer.name || '', TEXT_W);
     doc.text(dealerLines, TEXT_X, BODY_Y + BODY_H * 0.22);
 
-    // Vehicle / property name — brand colour (or black if light)
+    // Vehicle / property name
     const vehicleName = listing.listing_type === 'property'
       ? listing.address || ''
       : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
@@ -310,7 +285,6 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
   const filename = singleListing
     ? `${dealer.code}-label-${singleListing.stock_number || singleListing.property_id}.pdf`
     : `${dealer.code}-QR-Labels-8up.pdf`;
-
   doc.save(filename);
 }
 // ─────────────────────────────────────────────────────────────────────────────
