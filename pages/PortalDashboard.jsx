@@ -7,6 +7,52 @@ const LINQR_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 const OLD_SUPABASE_URL = "https://sfymjnjpqvgtoxofndzx.supabase.co";
 const OLD_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeW1qbmpwcXZndG94b2ZuZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzI1MTAsImV4cCI6MjA3MzE0ODUxMH0.RqBItIZ-Iz_XhKcJNsJSR6e3n5jxW_YKHWGHO5j1z2c";
 
+// ─── COLOUR HELPERS ───────────────────────────────────────────────────────────
+// Convert hex string to [r, g, b] array
+function hexToRgb(hex) {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return [r, g, b];
+}
+
+// Perceived brightness 0-255. Above 160 = too light for QR/dark-on-light use
+function brightness(hex) {
+  const [r, g, b] = hexToRgb(hex);
+  return (r * 299 + g * 587 + b * 114) / 1000;
+}
+
+// For a given brand colour, return the full label colour scheme
+function getLabelColours(brandHex) {
+  const LINQR_GREEN = [29, 107, 74];   // always used for LINQR badge background
+  const BLACK       = [26, 26, 26];
+  const WHITE       = [255, 255, 255];
+  const GREY        = [90, 90, 90];
+  const LGREY       = [120, 120, 120];
+
+  const brandRgb    = hexToRgb(brandHex);
+  const isLight     = brightness(brandHex) > 160;  // yellow, white etc
+
+  return {
+    // Stripe top & bottom — always brand colour
+    stripe: brandRgb,
+    // QR code dark colour — brand if dark enough, else black
+    qrDark: isLight ? BLACK : brandRgb,
+    // Vehicle name text on label — brand if dark enough, else black
+    vehicleText: isLight ? BLACK : brandRgb,
+    // LINQR badge — always LINQR green regardless of dealer
+    badge: LINQR_GREEN,
+    // These never change
+    black: BLACK,
+    white: WHITE,
+    grey: GREY,
+    lgrey: LGREY,
+    dkgrey: BLACK,
+  };
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function parseCSV(text) {
   const normalised = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   function tokenise(str) {
@@ -58,8 +104,10 @@ function mapCSVToListing(row, dealerId) {
     listing_url:row.stock_url||null, published:true,
   };
 }
+
 // ─── QR LABEL PDF GENERATOR ───────────────────────────────────────────────────
 // Avery 938207 — 99.1mm × 67.7mm — A4 portrait — 2 cols × 4 rows = 8 labels
+// Colours driven by dealer.brand_colour — one file works for all dealers
 
 async function generateLabelPDF(listings, dealer, singleListing = null) {
 
@@ -68,8 +116,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     if (window.jspdf) return resolve();
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    s.onload = resolve;
-    s.onerror = reject;
+    s.onload = resolve; s.onerror = reject;
     document.head.appendChild(s);
   });
 
@@ -78,54 +125,42 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     if (window.QRCode) return resolve();
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-    s.onload = resolve;
-    s.onerror = reject;
+    s.onload = resolve; s.onerror = reject;
     document.head.appendChild(s);
   });
 
   const { jsPDF } = window.jspdf;
 
+  // ── Colour scheme from dealer brand colour ────────────────────────────────
+  const brandHex = dealer.brand_colour || '#1D6B4A';
+  const C = getLabelColours(brandHex);
+
   // ── Dimensions ─────────────────────────────────────────────────────────────
   const LW = 99.1;
   const LH = 67.7;
   const COLS = 2;
-  const ROWS = 4;
-
   const PAGE_W = 210;
-  const PAGE_H = 297;
-
   const MARGIN_LEFT = (PAGE_W - COLS * LW) / 2;
   const MARGIN_TOP = 13;
 
-  // ── Colours ───────────────────────────────────────────────────────────────
-  const GREEN = [29, 107, 74];
-  const BLACK = [26, 26, 26];
-  const WHITE = [255, 255, 255];
-  const DKGREY = [26, 26, 26];
-  const GREY = [90, 90, 90];
-  const LGREY = [120, 120, 120];
-
-  // ── QR helper ─────────────────────────────────────────────────────────────
+  // ── QR helper — uses dealer's QR dark colour ───────────────────────────────
   async function getQRDataURL(url) {
+    const qrColour = `rgb(${C.qrDark[0]},${C.qrDark[1]},${C.qrDark[2]})`;
     return new Promise(resolve => {
       const div = document.createElement('div');
       div.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
       document.body.appendChild(div);
-
       new window.QRCode(div, {
         text: url,
         width: 256,
         height: 256,
-        colorDark: '#1D6B4A',
+        colorDark: qrColour,
         colorLight: '#ffffff',
         correctLevel: window.QRCode.CorrectLevel.H
       });
-
       setTimeout(() => {
         const el = div.querySelector('canvas') || div.querySelector('img');
-        const dataUrl = el
-          ? (el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src)
-          : '';
+        const dataUrl = el ? (el.tagName === 'CANVAS' ? el.toDataURL('image/png') : el.src) : '';
         document.body.removeChild(div);
         resolve(dataUrl);
       }, 200);
@@ -134,12 +169,10 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
 
   async function getLogoDataURL() {
     return new Promise(resolve => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
+      const img = new Image(); img.crossOrigin = 'anonymous';
       img.onload = () => {
         const c = document.createElement('canvas');
-        c.width = img.width;
-        c.height = img.height;
+        c.width = img.width; c.height = img.height;
         c.getContext('2d').drawImage(img, 0, 0);
         resolve(c.toDataURL('image/png'));
       };
@@ -157,60 +190,55 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
 
   // ── Create PDF ────────────────────────────────────────────────────────────
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
   let labelIndex = 0;
 
   for (let i = 0; i < publishedListings.length; i++) {
     const listing = publishedListings[i];
 
-    if (labelIndex > 0 && labelIndex % (COLS * ROWS) === 0) doc.addPage();
+    if (labelIndex > 0 && labelIndex % (COLS * 4) === 0) doc.addPage();
 
-    const pos = labelIndex % (COLS * ROWS);
+    const pos = labelIndex % (COLS * 4);
     const col = pos % COLS;
     const row = Math.floor(pos / COLS);
 
     const lx = MARGIN_LEFT + col * LW;
     const ly = MARGIN_TOP + row * LH;
 
-    // ── Tuned Layout ────────────────────────────────────────────────────────
+    // ── Layout constants ──────────────────────────────────────────────────
     const GREEN_BAR_H = 2.8;
     const BLACK_BAR_H = 10.5;
-    const QR_PADDING = 2.8;
+    const QR_PADDING  = 2.8;
+    const QR_SIZE     = LH - GREEN_BAR_H * 2 - BLACK_BAR_H - QR_PADDING * 2;
+    const QR_X        = lx + QR_PADDING;
+    const QR_Y        = ly + GREEN_BAR_H + BLACK_BAR_H + QR_PADDING;
+    const TEXT_X      = lx + QR_SIZE + QR_PADDING * 3;
+    const TEXT_W      = LW - QR_SIZE - QR_PADDING * 4;
+    const BODY_Y      = ly + GREEN_BAR_H + BLACK_BAR_H;
+    const BODY_H      = LH - GREEN_BAR_H * 2 - BLACK_BAR_H;
 
-    const QR_SIZE = LH - GREEN_BAR_H * 2 - BLACK_BAR_H - QR_PADDING * 2;
+    // White background
+    doc.setFillColor(...C.white);
+    doc.rect(lx, ly, LW, LH, 'F');
 
-    const QR_X = lx + QR_PADDING;
-    const QR_Y = ly + GREEN_BAR_H + BLACK_BAR_H + QR_PADDING;
+    // Green stripes top & bottom — full page width — brand colour
+    doc.setFillColor(...C.stripe);
+    doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
+    doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
 
-    const TEXT_X = lx + QR_SIZE + QR_PADDING * 3;
-    const TEXT_W = LW - QR_SIZE - QR_PADDING * 4;
+    // Black bar — per label, 4mm bleed each side
+    doc.setFillColor(...C.black);
+    doc.rect(lx - 4, ly + GREEN_BAR_H, LW + 8, BLACK_BAR_H, 'F');
 
-    const BODY_Y = ly + GREEN_BAR_H + BLACK_BAR_H;
-    const BODY_H = LH - GREEN_BAR_H * 2 - BLACK_BAR_H;
-// Background
-doc.setFillColor(...WHITE);
-doc.rect(lx, ly, LW, LH, 'F');
-
-// Full‑bleed green bars (top + bottom)
-doc.setFillColor(...GREEN);
-doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
-doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
-
-// Per‑label black bar (NOT full‑bleed)
-doc.setFillColor(...BLACK);
-   
-doc.rect(lx - 4, ly + GREEN_BAR_H, LW + 8, BLACK_BAR_H, 'F');
-   
-// Scan Me text (inside per‑label black bar)
-doc.setFont('helvetica', 'bold');
-doc.setFontSize(15);
-doc.setTextColor(...WHITE);
-doc.text(
-  'Scan Me · Save Me · Share Me',
-  lx + LW / 2,
-  ly + GREEN_BAR_H + BLACK_BAR_H / 2,
-  { align: 'center', baseline: 'middle' }
-);
+    // Scan Me text — centred on this label
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(...C.white);
+    doc.text(
+      'Scan Me · Save Me · Share Me',
+      lx + LW / 2,
+      ly + GREEN_BAR_H + BLACK_BAR_H / 2,
+      { align: 'center', baseline: 'middle' }
+    );
 
     // QR code
     const qrUrl = `https://linqr.global/${listing.slug}`;
@@ -219,90 +247,62 @@ doc.text(
       doc.addImage(qrDataUrl, 'PNG', QR_X, QR_Y, QR_SIZE, QR_SIZE);
     }
 
-    // LINQR badge
+    // LINQR badge — always LINQR green, sits on QR code centre
     try {
       const badgeW = QR_SIZE * 0.55;
       const badgeH = QR_SIZE * 0.18;
       const badgeX = QR_X + (QR_SIZE - badgeW) / 2;
       const badgeY = QR_Y + (QR_SIZE - badgeH) / 2;
 
-      doc.setFillColor(...GREEN);
+      doc.setFillColor(...C.badge);   // always LINQR green
       doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'F');
-
-      doc.setDrawColor(...WHITE);
+      doc.setDrawColor(...C.white);
       doc.setLineWidth(0.3);
       doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'S');
 
       if (logoDataUrl) {
         const logoW = badgeW * 0.75;
         const logoH = badgeH * 0.65;
-        doc.addImage(
-          logoDataUrl,
-          'PNG',
-          badgeX + (badgeW - logoW) / 2,
-          badgeY + (badgeH - logoH) / 2,
-          logoW,
-          logoH
-        );
+        doc.addImage(logoDataUrl, 'PNG', badgeX + (badgeW - logoW) / 2, badgeY + (badgeH - logoH) / 2, logoW, logoH);
       } else {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(5);
-        doc.setTextColor(...WHITE);
-        doc.text('®LINQR™', badgeX + badgeW / 2, badgeY + badgeH / 2, {
-          align: 'center',
-          baseline: 'middle'
-        });
+        doc.setTextColor(...C.white);
+        doc.text('®LINQR™', badgeX + badgeW / 2, badgeY + badgeH / 2, { align: 'center', baseline: 'middle' });
       }
     } catch (e) {}
 
     // Dealer name
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.setTextColor(...DKGREY);
-
+    doc.setTextColor(...C.dkgrey);
     const dealerLines = doc.splitTextToSize(dealer.name || '', TEXT_W);
     doc.text(dealerLines, TEXT_X, BODY_Y + BODY_H * 0.22);
 
-    // Vehicle name
-    const vehicleName =
-      listing.listing_type === 'property'
-        ? listing.address || ''
-        : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
-
+    // Vehicle / property name — brand colour (or black if light)
+    const vehicleName = listing.listing_type === 'property'
+      ? listing.address || ''
+      : `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim();
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.setTextColor(...GREEN);
-
+    doc.setTextColor(...C.vehicleText);
     const vehicleLines = doc.splitTextToSize(vehicleName, TEXT_W);
     doc.text(vehicleLines, TEXT_X, BODY_Y + BODY_H * 0.48);
 
     // Stock / ID
+    const stockLine = listing.listing_type === 'property'
+      ? `ID: ${listing.property_id || ''}`
+      : `Stock #${listing.stock_number}`;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.4);
-    doc.setTextColor(...GREY);
-
-    const stockLine =
-      listing.listing_type === 'property'
-        ? `ID: ${listing.property_id || ''}`
-        : `Stock #${listing.stock_number}`;
-
-    doc.text(
-      stockLine,
-      TEXT_X + TEXT_W / 2,
-      BODY_Y + BODY_H * 0.82,
-      { align: 'center' }
-    );
+    doc.setTextColor(...C.grey);
+    doc.text(stockLine, TEXT_X + TEXT_W / 2, BODY_Y + BODY_H * 0.82, { align: 'center' });
 
     // Copyright
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.setTextColor(...LGREY);
-    doc.text(
-      '© LINQR 2026 · linqr.global',
-      TEXT_X + TEXT_W / 2,
-      BODY_Y + BODY_H * 0.93,
-      { align: 'center' }
-    );
+    doc.setTextColor(...C.lgrey);
+    doc.text('© LINQR 2026 · linqr.global', TEXT_X + TEXT_W / 2, BODY_Y + BODY_H * 0.93, { align: 'center' });
 
     labelIndex++;
   }
@@ -313,13 +313,6 @@ doc.text(
 
   doc.save(filename);
 }
-
-
-
-
-
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddProperty, onEdit }) {
@@ -497,7 +490,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
 
       <div style={{background:'#fff',borderBottom:'1px solid #eee',padding:'14px 24px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
         <div style={{fontSize:13,fontWeight:700,color:'#333',fontFamily:'Georgia, serif'}}>🏷️ Print QR Labels</div>
-        <button onClick={handlePrintLabels} disabled={generatingLabels} style={{background:generatingLabels?'#aaa':'#1B6157',color:'#fff',border:'none',borderRadius:6,padding:'8px 18px',fontSize:13,fontWeight:700,cursor:generatingLabels?'not-allowed':'pointer',fontFamily:'Georgia, serif'}}>
+        <button onClick={handlePrintLabels} disabled={generatingLabels} style={{background:generatingLabels?'#aaa':brandColour,color:isRayWhite?'#000':'#fff',border:'none',borderRadius:6,padding:'8px 18px',fontSize:13,fontWeight:700,cursor:generatingLabels?'not-allowed':'pointer',fontFamily:'Georgia, serif'}}>
           {generatingLabels?'Generating PDF...':'🖨️ Print All Labels'}
         </button>
         <span style={{fontSize:12,color:'#aaa',fontFamily:'Georgia, serif'}}>
@@ -547,7 +540,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
               <div style={{...styles.statusBadge,background:listing.published?"#d4edda":"#fff3cd",color:listing.published?"#155724":"#856404"}}>{listing.published?"● Live":"○ Draft"}</div>
               <button style={styles.actionBtn} onClick={()=>togglePublished(listing)}>{listing.published?"Unpublish":"Publish"}</button>
               <button style={styles.actionBtn} onClick={()=>onEdit(listing)}>Edit</button>
-              <button style={{...styles.actionBtn,color:'#1B6157',fontWeight:700}} onClick={()=>handlePrintSingleLabel(listing)}>🏷️ Label</button>
+              <button style={{...styles.actionBtn,color:brandColour,fontWeight:700}} onClick={()=>handlePrintSingleLabel(listing)}>🏷️ Label</button>
               <button style={{...styles.actionBtn,color:"#cc0000"}} onClick={()=>deleteListing(listing.id)}>Delete</button>
             </div>
           </div>
@@ -598,4 +591,3 @@ const styles = {
   footer:{textAlign:"center",padding:24},
   footerText:{fontSize:11,color:"#bbb",margin:0},
 };
-
