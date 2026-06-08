@@ -4,6 +4,7 @@ import Register from "./pages/b7k9f2-register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Portal from "./pages/Portal.jsx";
 import DynamicListing from "./pages/DynamicListing.jsx";
+import CallbackRequest from "./pages/CallbackRequest.jsx";
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/portal" element={<Portal />} />
         <Route path="/portal/*" element={<Portal />} />
+        <Route path="/callback/:slug" element={<CallbackRequest />} />
         <Route path="/:slug" element={<DynamicListing />} />
         <Route
           path="*"
