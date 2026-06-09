@@ -82,7 +82,7 @@ function mapCSVToListing(row, dealerId) {
   };
 }
 
-// ─── SHARED LABEL HELPERS ─────────────────────────────────────────────────────
+// ─── SHARED HELPERS ───────────────────────────────────────────────────────────
 async function loadJsPDF() {
   return new Promise((resolve,reject)=>{
     if(window.jspdf)return resolve();
@@ -122,117 +122,19 @@ async function getImageDataURL(src) {
   });
 }
 
-// ─── DRAW ONE LABEL ──────────────────────────────────────────────────────────
-// Shared drawing function used by both 8-up and 4-up generators
-// lx/ly = top-left corner of label in mm
-// LW/LH = label width/height in mm
-function drawLabel(doc, listing, dealer, lx, ly, LW, LH, C, PAGE_W, qrDataUrl, linqrLogoUrl, dealerLogoUrl) {
-
-  const GREEN_BAR_H = LH * 0.045;   // ~2.8mm on 8up, scales up on 4up
-  const BLACK_BAR_H = LH * 0.165;   // ~10.5mm on 8up, scales up on 4up
-  const QR_PADDING  = LW * 0.028;
-
-  const QR_SIZE = LH - GREEN_BAR_H * 2 - BLACK_BAR_H - QR_PADDING * 2;
-  const QR_X    = lx + QR_PADDING;
-  const QR_Y    = ly + GREEN_BAR_H + BLACK_BAR_H + QR_PADDING;
-  const TEXT_X  = lx + QR_SIZE + QR_PADDING * 3;
-  const TEXT_W  = LW - QR_SIZE - QR_PADDING * 4;
-  const BODY_Y  = ly + GREEN_BAR_H + BLACK_BAR_H;
-  const BODY_H  = LH - GREEN_BAR_H * 2 - BLACK_BAR_H;
-
-  // Scale font sizes proportionally to label height
-  const fontScale = LH / 67.7;
-
-  // White background
-  doc.setFillColor(...C.white);
-  doc.rect(lx, ly, LW, LH, 'F');
-
-  // Brand colour stripes — full page width
-  doc.setFillColor(...C.stripe);
-  doc.rect(0, ly, PAGE_W, GREEN_BAR_H, 'F');
-  doc.rect(0, ly + LH - GREEN_BAR_H, PAGE_W, GREEN_BAR_H, 'F');
-
-  // Black bar — per label, 4mm bleed each side
-  doc.setFillColor(...C.black);
-  doc.rect(lx - 4, ly + GREEN_BAR_H, LW + 8, BLACK_BAR_H, 'F');
-
-  // Scan Me text
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(15 * fontScale);
-  doc.setTextColor(...C.white);
-  doc.text('Scan Me · Save Me · Share Me', lx + LW / 2, ly + GREEN_BAR_H + BLACK_BAR_H / 2, {align:'center',baseline:'middle'});
-
-  // QR code
-  if(qrDataUrl) doc.addImage(qrDataUrl,'PNG',QR_X,QR_Y,QR_SIZE,QR_SIZE);
-
-  // LINQR badge
-  try {
-    const badgeW=QR_SIZE*0.55, badgeH=QR_SIZE*0.18;
-    const badgeX=QR_X+(QR_SIZE-badgeW)/2, badgeY=QR_Y+(QR_SIZE-badgeH)/2;
-    doc.setFillColor(...C.qrDark);
-    doc.roundedRect(badgeX-1,badgeY-1,badgeW+2,badgeH+2,1.4,1.4,'F');
-    doc.setFillColor(...C.badge);
-    doc.roundedRect(badgeX,badgeY,badgeW,badgeH,1.2,1.2,'F');
-    doc.setDrawColor(...C.white);doc.setLineWidth(0.3);
-    doc.roundedRect(badgeX,badgeY,badgeW,badgeH,1.2,1.2,'S');
-    if(linqrLogoUrl){
-      const logoW=badgeW*0.75, logoH=badgeH*0.65;
-      doc.addImage(linqrLogoUrl,'PNG',badgeX+(badgeW-logoW)/2,badgeY+(badgeH-logoH)/2,logoW,logoH);
-    } else {
-      doc.setFont('helvetica','bold');doc.setFontSize(5*fontScale);doc.setTextColor(...C.white);
-      doc.text('®LINQR™',badgeX+badgeW/2,badgeY+badgeH/2,{align:'center',baseline:'middle'});
-    }
-  } catch(e){}
-
-  // Right panel — dealer logo or dealer name text
-  if(dealerLogoUrl){
-    const dLogoMaxW=TEXT_W, dLogoMaxH=BODY_H*0.28;
-    const dLogoY=BODY_Y+BODY_H*0.06;
-    try {
-      doc.addImage(dealerLogoUrl,'JPEG',TEXT_X,dLogoY,dLogoMaxW,dLogoMaxH,undefined,'FAST');
-    } catch(e){
-      doc.setFont('helvetica','bold');doc.setFontSize(11*fontScale);doc.setTextColor(...C.dkgrey);
-      const dl=doc.splitTextToSize(dealer.name||'',TEXT_W);
-      doc.text(dl,TEXT_X,BODY_Y+BODY_H*0.22);
-    }
-  } else {
-    doc.setFont('helvetica','bold');doc.setFontSize(11*fontScale);doc.setTextColor(...C.dkgrey);
-    const dl=doc.splitTextToSize(dealer.name||'',TEXT_W);
-    doc.text(dl,TEXT_X,BODY_Y+BODY_H*0.22);
-  }
-
-  // Vehicle / property name
-  const vehicleName=listing.listing_type==='property'
-    ?listing.address||''
-    :`${listing.year||''} ${listing.make||''} ${listing.model||''}`.trim();
-  doc.setFont('helvetica','bold');doc.setFontSize(10*fontScale);doc.setTextColor(...C.vehicleText);
-  const vl=doc.splitTextToSize(vehicleName,TEXT_W);
-  doc.text(vl,TEXT_X,BODY_Y+BODY_H*(dealerLogoUrl?0.52:0.48));
-
-  // Stock / ID
-  const stockLine=listing.listing_type==='property'?`ID: ${listing.property_id||''}`:`Stock #${listing.stock_number}`;
-  doc.setFont('helvetica','normal');doc.setFontSize(8.4*fontScale);doc.setTextColor(...C.grey);
-  doc.text(stockLine,TEXT_X+TEXT_W/2,BODY_Y+BODY_H*0.82,{align:'center'});
-
-  // Copyright
-  doc.setFont('helvetica','normal');doc.setFontSize(7*fontScale);doc.setTextColor(...C.lgrey);
-  doc.text('© LINQR 2026 · linqr.global',TEXT_X+TEXT_W/2,BODY_Y+BODY_H*0.93,{align:'center'});
-}
-
 // ─── 8-UP LABEL PDF — Avery 938207 — 99.1×67.7mm ─────────────────────────────
+// LANDSCAPE LABEL — QR left, text right
+// DO NOT MODIFY THIS FUNCTION — working perfectly
 async function generateLabelPDF(listings, dealer, singleListing = null) {
   await loadJsPDF(); await loadQRCode();
   const {jsPDF}=window.jspdf;
   const brandHex=dealer.brand_colour||'#1D6B4A';
   const C=getLabelColours(brandHex);
-
-  // 8-up dimensions
   const LW=99.1, LH=67.7, COLS=2, ROWS=4, PAGE_W=210;
   const MARGIN_LEFT=(PAGE_W-COLS*LW)/2, MARGIN_TOP=13;
 
   const linqrLogoUrl=await getImageDataURL('/LINQR-logo.png');
   const dealerLogoUrl=dealer.logo_url?await getImageDataURL(dealer.logo_url):null;
-
   const publishedListings=singleListing?[singleListing]:listings.filter(l=>l.published);
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   let labelIndex=0;
@@ -243,8 +145,66 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     const pos=labelIndex%(COLS*ROWS);
     const col=pos%COLS, row=Math.floor(pos/COLS);
     const lx=MARGIN_LEFT+col*LW, ly=MARGIN_TOP+row*LH;
+
+    const GREEN_BAR_H=2.8, BLACK_BAR_H=10.5, QR_PADDING=2.8;
+    const QR_SIZE=LH-GREEN_BAR_H*2-BLACK_BAR_H-QR_PADDING*2;
+    const QR_X=lx+QR_PADDING, QR_Y=ly+GREEN_BAR_H+BLACK_BAR_H+QR_PADDING;
+    const TEXT_X=lx+QR_SIZE+QR_PADDING*3, TEXT_W=LW-QR_SIZE-QR_PADDING*4;
+    const BODY_Y=ly+GREEN_BAR_H+BLACK_BAR_H, BODY_H=LH-GREEN_BAR_H*2-BLACK_BAR_H;
+
+    doc.setFillColor(...C.white);doc.rect(lx,ly,LW,LH,'F');
+    doc.setFillColor(...C.stripe);
+    doc.rect(0,ly,PAGE_W,GREEN_BAR_H,'F');
+    doc.rect(0,ly+LH-GREEN_BAR_H,PAGE_W,GREEN_BAR_H,'F');
+    doc.setFillColor(...C.black);
+    doc.rect(lx-4,ly+GREEN_BAR_H,LW+8,BLACK_BAR_H,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...C.white);
+    doc.text('Scan Me · Save Me · Share Me',lx+LW/2,ly+GREEN_BAR_H+BLACK_BAR_H/2,{align:'center',baseline:'middle'});
+
     const qrDataUrl=await getQRDataURL(`https://linqr.global/${listing.slug}`,C);
-    drawLabel(doc,listing,dealer,lx,ly,LW,LH,C,PAGE_W,qrDataUrl,linqrLogoUrl,dealerLogoUrl);
+    if(qrDataUrl)doc.addImage(qrDataUrl,'PNG',QR_X,QR_Y,QR_SIZE,QR_SIZE);
+
+    try {
+      const badgeW=QR_SIZE*0.55, badgeH=QR_SIZE*0.18;
+      const badgeX=QR_X+(QR_SIZE-badgeW)/2, badgeY=QR_Y+(QR_SIZE-badgeH)/2;
+      doc.setFillColor(...C.qrDark);
+      doc.roundedRect(badgeX-1,badgeY-1,badgeW+2,badgeH+2,1.4,1.4,'F');
+      doc.setFillColor(...C.badge);
+      doc.roundedRect(badgeX,badgeY,badgeW,badgeH,1.2,1.2,'F');
+      doc.setDrawColor(...C.white);doc.setLineWidth(0.3);
+      doc.roundedRect(badgeX,badgeY,badgeW,badgeH,1.2,1.2,'S');
+      if(linqrLogoUrl){
+        const logoW=badgeW*0.75,logoH=badgeH*0.65;
+        doc.addImage(linqrLogoUrl,'PNG',badgeX+(badgeW-logoW)/2,badgeY+(badgeH-logoH)/2,logoW,logoH);
+      } else {
+        doc.setFont('helvetica','bold');doc.setFontSize(5);doc.setTextColor(...C.white);
+        doc.text('®LINQR™',badgeX+badgeW/2,badgeY+badgeH/2,{align:'center',baseline:'middle'});
+      }
+    } catch(e){}
+
+    if(dealerLogoUrl){
+      try{doc.addImage(dealerLogoUrl,'JPEG',TEXT_X,BODY_Y+BODY_H*0.06,TEXT_W,BODY_H*0.28,undefined,'FAST');}
+      catch(e){
+        doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...C.dkgrey);
+        doc.text(doc.splitTextToSize(dealer.name||'',TEXT_W),TEXT_X,BODY_Y+BODY_H*0.22);
+      }
+    } else {
+      doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...C.dkgrey);
+      doc.text(doc.splitTextToSize(dealer.name||'',TEXT_W),TEXT_X,BODY_Y+BODY_H*0.22);
+    }
+
+    const vehicleName=listing.listing_type==='property'?listing.address||'':
+      `${listing.year||''} ${listing.make||''} ${listing.model||''}`.trim();
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...C.vehicleText);
+    doc.text(doc.splitTextToSize(vehicleName,TEXT_W),TEXT_X,BODY_Y+BODY_H*(dealerLogoUrl?0.52:0.48));
+
+    const stockLine=listing.listing_type==='property'?`ID: ${listing.property_id||''}`:`Stock #${listing.stock_number}`;
+    doc.setFont('helvetica','normal');doc.setFontSize(8.4);doc.setTextColor(...C.grey);
+    doc.text(stockLine,TEXT_X+TEXT_W/2,BODY_Y+BODY_H*0.82,{align:'center'});
+
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.lgrey);
+    doc.text('© LINQR 2026 · linqr.global',TEXT_X+TEXT_W/2,BODY_Y+BODY_H*0.93,{align:'center'});
+
     labelIndex++;
   }
 
@@ -255,24 +215,21 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
 }
 
 // ─── 4-UP LARGE LABEL PDF — Avery L7169 — 99.1×139mm ────────────────────────
-// Portrait A4, 2 cols × 2 rows = 4 per sheet
-// Spec from Avery L7169 official template:
-//   Top margin: 9.5mm, Left margin: 4.62mm, H-gap: 2.54mm, V-gap: ~9mm
+// PORTRAIT STACKED layout — top to bottom:
+//   Brand stripe | Black Scan Me bar | QR code (large, centred) |
+//   Dealer logo (centred) | Vehicle name | Stock # | LINQR copyright | Brand stripe
 async function generateLargeLabelPDF(listings, dealer, singleListing = null) {
   await loadJsPDF(); await loadQRCode();
   const {jsPDF}=window.jspdf;
   const brandHex=dealer.brand_colour||'#1D6B4A';
   const C=getLabelColours(brandHex);
 
-  // L7169 dimensions
-  const LW=99.1, LH=139.0, COLS=2, ROWS=2, PAGE_W=210, PAGE_H=297;
-  const MARGIN_LEFT=4.62, MARGIN_TOP=9.5;
-  const H_GAP=2.54;
-  // Verify: 4.62 + 99.1 + 2.54 + 99.1 + 4.62 = 209.98 ✓ fits A4 210mm width
+  // L7169 spec from Avery official template
+  const LW=99.1, LH=139.0, COLS=2, ROWS=2, PAGE_W=210;
+  const MARGIN_LEFT=4.62, MARGIN_TOP=9.5, H_GAP=2.54;
 
   const linqrLogoUrl=await getImageDataURL('/LINQR-logo.png');
   const dealerLogoUrl=dealer.logo_url?await getImageDataURL(dealer.logo_url):null;
-
   const publishedListings=singleListing?[singleListing]:listings.filter(l=>l.published);
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   let labelIndex=0;
@@ -282,11 +239,103 @@ async function generateLargeLabelPDF(listings, dealer, singleListing = null) {
     if(labelIndex>0&&labelIndex%(COLS*ROWS)===0)doc.addPage();
     const pos=labelIndex%(COLS*ROWS);
     const col=pos%COLS, row=Math.floor(pos/ROWS);
-    // Use H_GAP between columns
     const lx=MARGIN_LEFT+col*(LW+H_GAP);
     const ly=MARGIN_TOP+row*LH;
+
+    // ── Stacked portrait layout constants ──────────────────────────────────
+    const STRIPE_H   = 4.5;    // brand colour stripe top & bottom
+    const BAR_H      = 14.0;   // black Scan Me bar
+    const PADDING    = 4.0;    // general padding
+    const QR_SIZE    = LW - PADDING * 2;  // QR nearly full width ~91mm
+    const CX         = lx + LW / 2;      // horizontal centre of label
+
+    // Vertical positions top to bottom
+    const stripeTopY  = ly;
+    const barY        = ly + STRIPE_H;
+    const qrY         = barY + BAR_H + PADDING;
+    const afterQR     = qrY + QR_SIZE;
+
+    // Remaining space below QR for logo + text
+    const stripeBottomY = ly + LH - STRIPE_H;
+    const textZoneH     = stripeBottomY - afterQR - PADDING;
+    const textZoneY     = afterQR + PADDING;
+
+    // ── White background ──────────────────────────────────────────────────
+    doc.setFillColor(...C.white);
+    doc.rect(lx,ly,LW,LH,'F');
+
+    // ── Brand colour stripes — full page width ────────────────────────────
+    doc.setFillColor(...C.stripe);
+    doc.rect(0,stripeTopY,PAGE_W,STRIPE_H,'F');
+    doc.rect(0,stripeBottomY,PAGE_W,STRIPE_H,'F');
+
+    // ── Black Scan Me bar — per label, 4mm bleed ──────────────────────────
+    doc.setFillColor(...C.black);
+    doc.rect(lx-4,barY,LW+8,BAR_H,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(...C.white);
+    doc.text('Scan Me · Save Me · Share Me',CX,barY+BAR_H/2,{align:'center',baseline:'middle'});
+
+    // ── QR code — large, centred ──────────────────────────────────────────
+    const qrX = lx + PADDING;
     const qrDataUrl=await getQRDataURL(`https://linqr.global/${listing.slug}`,C);
-    drawLabel(doc,listing,dealer,lx,ly,LW,LH,C,PAGE_W,qrDataUrl,linqrLogoUrl,dealerLogoUrl);
+    if(qrDataUrl)doc.addImage(qrDataUrl,'PNG',qrX,qrY,QR_SIZE,QR_SIZE);
+
+    // ── LINQR badge — centred on QR ───────────────────────────────────────
+    try {
+      const badgeW=QR_SIZE*0.38, badgeH=QR_SIZE*0.12;
+      const badgeX=qrX+(QR_SIZE-badgeW)/2, badgeY=qrY+(QR_SIZE-badgeH)/2;
+      doc.setFillColor(...C.qrDark);
+      doc.roundedRect(badgeX-1.5,badgeY-1.5,badgeW+3,badgeH+3,2,2,'F');
+      doc.setFillColor(...C.badge);
+      doc.roundedRect(badgeX,badgeY,badgeW,badgeH,1.5,1.5,'F');
+      doc.setDrawColor(...C.white);doc.setLineWidth(0.4);
+      doc.roundedRect(badgeX,badgeY,badgeW,badgeH,1.5,1.5,'S');
+      if(linqrLogoUrl){
+        const logoW=badgeW*0.75,logoH=badgeH*0.65;
+        doc.addImage(linqrLogoUrl,'PNG',badgeX+(badgeW-logoW)/2,badgeY+(badgeH-logoH)/2,logoW,logoH);
+      } else {
+        doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...C.white);
+        doc.text('®LINQR™',badgeX+badgeW/2,badgeY+badgeH/2,{align:'center',baseline:'middle'});
+      }
+    } catch(e){}
+
+    // ── Text zone — dealer logo | vehicle name | stock | copyright ────────
+    // Divide text zone into sections
+    const logoZoneH   = textZoneH * 0.38;
+    const nameZoneY   = textZoneY + logoZoneH + PADDING * 0.5;
+    const stockY      = textZoneY + textZoneH * 0.72;
+    const copyrightY  = textZoneY + textZoneH * 0.88;
+
+    // Dealer logo (if set) or dealer name text
+    if(dealerLogoUrl){
+      const dLogoH = logoZoneH * 0.85;
+      const dLogoW = Math.min(LW - PADDING * 2, dLogoH * 3.5); // max aspect ratio
+      try {
+        doc.addImage(dealerLogoUrl,'JPEG',CX-dLogoW/2,textZoneY,dLogoW,dLogoH,undefined,'FAST');
+      } catch(e){
+        doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...C.dkgrey);
+        doc.text(doc.splitTextToSize(dealer.name||'',LW-PADDING*2),CX,textZoneY+logoZoneH*0.5,{align:'center',baseline:'middle'});
+      }
+    } else {
+      doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...C.dkgrey);
+      doc.text(doc.splitTextToSize(dealer.name||'',LW-PADDING*2),CX,textZoneY+logoZoneH*0.5,{align:'center',baseline:'middle'});
+    }
+
+    // Vehicle / property name
+    const vehicleName=listing.listing_type==='property'?listing.address||'':
+      `${listing.year||''} ${listing.make||''} ${listing.model||''}`.trim();
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(...C.vehicleText);
+    doc.text(doc.splitTextToSize(vehicleName,LW-PADDING*2),CX,nameZoneY,{align:'center'});
+
+    // Stock / ID
+    const stockLine=listing.listing_type==='property'?`ID: ${listing.property_id||''}`:`Stock #${listing.stock_number}`;
+    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(...C.grey);
+    doc.text(stockLine,CX,stockY,{align:'center'});
+
+    // Copyright
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...C.lgrey);
+    doc.text('© LINQR 2026 · linqr.global',CX,copyrightY,{align:'center'});
+
     labelIndex++;
   }
 
@@ -543,7 +592,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
             </div>
           </div>
 
-          {/* Card 3 — Print QR Labels — both sizes */}
+          {/* Card 3 — Print QR Labels */}
           <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 4px rgba(0,0,0,0.08)",overflow:"hidden"}}>
             <div style={{height:4,background:cardAccent,borderRadius:"12px 12px 0 0"}}/>
             <div style={{padding:"20px 24px"}}>
@@ -551,12 +600,10 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
                 <span style={{fontSize:20}}>🏷️</span>
                 <span style={{fontSize:14,fontWeight:700,color:"#111",fontFamily:"Georgia, serif"}}>Print QR Labels</span>
               </div>
-              {/* 8-up standard */}
               <button onClick={handlePrintLabels} disabled={generatingLabels||generatingLargeLabels} style={{background:generatingLabels?'#9ca3af':brandColour,color:btnTextColour,border:'none',borderRadius:6,padding:'8px 16px',fontSize:13,fontWeight:700,cursor:(generatingLabels||generatingLargeLabels)?'not-allowed':'pointer',fontFamily:'Georgia, serif',width:'100%',marginBottom:8}}>
                 {generatingLabels?'Generating PDF...':'🖨️ Print All — Standard (8-up)'}
               </button>
               <p style={{fontSize:11,color:"#9ca3af",margin:"0 0 10px",fontFamily:"Georgia, serif"}}>Avery 938207 · 99.1×67.7mm · {liveCount} listing{liveCount!==1?'s':''} · {sheetCount8} sheet{sheetCount8!==1?'s':''}</p>
-              {/* 4-up large */}
               <button onClick={handlePrintLargeLabels} disabled={generatingLabels||generatingLargeLabels} style={{background:generatingLargeLabels?'#9ca3af':'#111',color:'#fff',border:'none',borderRadius:6,padding:'8px 16px',fontSize:13,fontWeight:700,cursor:(generatingLabels||generatingLargeLabels)?'not-allowed':'pointer',fontFamily:'Georgia, serif',width:'100%',marginBottom:8}}>
                 {generatingLargeLabels?'Generating PDF...':'🖨️ Print All — Large (4-up)'}
               </button>
