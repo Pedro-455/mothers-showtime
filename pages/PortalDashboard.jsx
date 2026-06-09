@@ -83,6 +83,10 @@ function mapCSVToListing(row, dealerId) {
 }
 
 // ─── QR LABEL PDF GENERATOR ───────────────────────────────────────────────────
+// Avery 938207 — 99.1mm × 67.7mm — A4 portrait — 2 cols × 4 rows = 8 labels
+// Right panel: dealer logo (if set) | vehicle name | stock | copyright
+// If no dealer logo: dealer name text | vehicle name | stock | copyright
+
 async function generateLabelPDF(listings, dealer, singleListing = null) {
   await new Promise((resolve,reject)=>{
     if(window.jspdf)return resolve();
@@ -118,6 +122,7 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     });
   }
 
+  // Load LINQR badge logo
   async function getLogoDataURL() {
     return new Promise(resolve=>{
       const img=new Image();img.crossOrigin='anonymous';
@@ -126,7 +131,21 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     });
   }
 
-  const logoDataUrl=await getLogoDataURL();
+  // Load dealer logo for right panel — uses dealer.logo_url if set
+  async function getDealerLogoDataURL() {
+    if(!dealer.logo_url) return null;
+    return new Promise(resolve=>{
+      const img=new Image();img.crossOrigin='anonymous';
+      img.onload=()=>{const c=document.createElement('canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);resolve(c.toDataURL('image/png'));};
+      img.onerror=()=>resolve(null);
+      // Handle both relative paths (/GMSV-logo.jpg) and full URLs
+      img.src=dealer.logo_url.startsWith('http')?dealer.logo_url:dealer.logo_url;
+    });
+  }
+
+  const logoDataUrl = await getLogoDataURL();
+  const dealerLogoDataUrl = await getDealerLogoDataURL();
+
   const publishedListings=singleListing?[singleListing]:listings.filter(l=>l.published);
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   let labelIndex=0;
@@ -137,25 +156,35 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
     const pos=labelIndex%(COLS*4);
     const col=pos%COLS, row=Math.floor(pos/COLS);
     const lx=MARGIN_LEFT+col*LW, ly=MARGIN_TOP+row*LH;
+
     const GREEN_BAR_H=2.8, BLACK_BAR_H=10.5, QR_PADDING=2.8;
     const QR_SIZE=LH-GREEN_BAR_H*2-BLACK_BAR_H-QR_PADDING*2;
     const QR_X=lx+QR_PADDING, QR_Y=ly+GREEN_BAR_H+BLACK_BAR_H+QR_PADDING;
     const TEXT_X=lx+QR_SIZE+QR_PADDING*3, TEXT_W=LW-QR_SIZE-QR_PADDING*4;
     const BODY_Y=ly+GREEN_BAR_H+BLACK_BAR_H, BODY_H=LH-GREEN_BAR_H*2-BLACK_BAR_H;
 
+    // White background
     doc.setFillColor(...C.white);doc.rect(lx,ly,LW,LH,'F');
+
+    // Brand colour stripes — full page width
     doc.setFillColor(...C.stripe);
     doc.rect(0,ly,PAGE_W,GREEN_BAR_H,'F');
     doc.rect(0,ly+LH-GREEN_BAR_H,PAGE_W,GREEN_BAR_H,'F');
+
+    // Black bar — per label, 4mm bleed each side
     doc.setFillColor(...C.black);
     doc.rect(lx-4,ly+GREEN_BAR_H,LW+8,BLACK_BAR_H,'F');
+
+    // Scan Me text
     doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...C.white);
     doc.text('Scan Me · Save Me · Share Me',lx+LW/2,ly+GREEN_BAR_H+BLACK_BAR_H/2,{align:'center',baseline:'middle'});
 
+    // QR code
     const qrUrl=`https://linqr.global/${listing.slug}`;
     const qrDataUrl=await getQRDataURL(qrUrl);
     if(qrDataUrl)doc.addImage(qrDataUrl,'PNG',QR_X,QR_Y,QR_SIZE,QR_SIZE);
 
+    // LINQR badge — outer rect matches QR colour, inner always LINQR green
     try {
       const badgeW=QR_SIZE*0.55, badgeH=QR_SIZE*0.18;
       const badgeX=QR_X+(QR_SIZE-badgeW)/2, badgeY=QR_Y+(QR_SIZE-badgeH)/2;
@@ -174,21 +203,44 @@ async function generateLabelPDF(listings, dealer, singleListing = null) {
       }
     } catch(e){}
 
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...C.dkgrey);
-    const dealerLines=doc.splitTextToSize(dealer.name||'',TEXT_W);
-    doc.text(dealerLines,TEXT_X,BODY_Y+BODY_H*0.22);
+    // ── Right text panel ──────────────────────────────────────────────────
+    // If dealer has a logo — show logo image instead of dealer name text
+    // If no dealer logo — show dealer name as text (existing behaviour)
 
+    if(dealerLogoDataUrl){
+      // Dealer logo image — sized to fit neatly in top portion of right panel
+      const dLogoMaxW = TEXT_W;
+      const dLogoMaxH = BODY_H * 0.28;
+      const dLogoY = BODY_Y + BODY_H * 0.06;
+      try {
+        doc.addImage(dealerLogoDataUrl,'JPEG',TEXT_X,dLogoY,dLogoMaxW,dLogoMaxH,undefined,'FAST');
+      } catch(e){
+        // Fallback to text if image fails
+        doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...C.dkgrey);
+        const dealerLines=doc.splitTextToSize(dealer.name||'',TEXT_W);
+        doc.text(dealerLines,TEXT_X,BODY_Y+BODY_H*0.22);
+      }
+    } else {
+      // No dealer logo — dealer name as text
+      doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...C.dkgrey);
+      const dealerLines=doc.splitTextToSize(dealer.name||'',TEXT_W);
+      doc.text(dealerLines,TEXT_X,BODY_Y+BODY_H*0.22);
+    }
+
+    // Vehicle / property name — shifted down slightly when logo present
     const vehicleName=listing.listing_type==='property'
       ?listing.address||''
       :`${listing.year||''} ${listing.make||''} ${listing.model||''}`.trim();
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...C.vehicleText);
     const vehicleLines=doc.splitTextToSize(vehicleName,TEXT_W);
-    doc.text(vehicleLines,TEXT_X,BODY_Y+BODY_H*0.48);
+    doc.text(vehicleLines,TEXT_X,BODY_Y+BODY_H*(dealerLogoDataUrl?0.52:0.48));
 
+    // Stock / ID
     const stockLine=listing.listing_type==='property'?`ID: ${listing.property_id||''}`:`Stock #${listing.stock_number}`;
     doc.setFont('helvetica','normal');doc.setFontSize(8.4);doc.setTextColor(...C.grey);
     doc.text(stockLine,TEXT_X+TEXT_W/2,BODY_Y+BODY_H*0.82,{align:'center'});
 
+    // Copyright
     doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.lgrey);
     doc.text('© LINQR 2026 · linqr.global',TEXT_X+TEXT_W/2,BODY_Y+BODY_H*0.93,{align:'center'});
 
@@ -347,6 +399,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
   const filteredListings=stockSearch.trim()?listings.filter(l=>l.stock_number&&l.stock_number.toString().includes(stockSearch.trim())):listings;
   const liveCount=listings.filter(l=>l.published).length;
   const sheetCount=Math.ceil(liveCount/8);
+  const cardAccent=brandColour;
 
   const AddButtons=()=>(
     <div style={{display:"flex",gap:10}}>
@@ -354,9 +407,6 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
       {isPropertyDealer&&(<button style={{background:isRayWhite?'#111':brandColour,color:isRayWhite?'#FFCD00':'#fff',border:"none",borderRadius:8,padding:"12px 20px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"Georgia, serif"}} onClick={onAddProperty}>🏡 Add Property</button>)}
     </div>
   );
-
-  // Card accent — subtle tint of brand colour for card top border
-  const cardAccent = brandColour;
 
   return (
     <div style={{minHeight:"100vh",background:"#f0f2f5"}}>
