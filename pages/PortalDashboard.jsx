@@ -121,7 +121,9 @@ async function getImageDataURL(src) {
     img.src=src;
   });
 }
-// Lifts near-black pixels (e.g. "SUNDAY" text) to crisp warm white on dark gallery cards while keeping coloured script intact
+// Adapts dark logos for dark gallery cards:
+// - Neutral black/charcoal pixels ("SUNDAY") become warm ivory-white
+// - Deep maroon/dark warm pixels ("D", "r" in "Drive") lift into glowing amber-gold so the entire script stands out
 async function getDarkBgLogoMeta(src) {
   return new Promise(resolve=>{
     const img=new Image();img.crossOrigin='anonymous';
@@ -138,9 +140,15 @@ async function getDarkBgLogoMeta(src) {
             const r=d[i],g=d[i+1],b=d[i+2];
             const lum=(r*299+g*587+b*114)/1000;
             const spread=Math.max(r,g,b)-Math.min(r,g,b);
-            // Neutral dark charcoal/black pixels become warm ivory-white; coloured pixels (orange/gold) stay untouched
-            if(lum<75 && spread<28){
+            if(lum<95 && spread<22){
+              // Neutral dark charcoal/black -> crisp warm ivory-white
               d[i]=245; d[i+1]=244; d[i+2]=238;
+            } else if(lum<135){
+              // Dark maroon/brown -> warm glowing copper-gold so "Drive" pops on black
+              const boost=135-lum;
+              d[i]=Math.min(255, Math.round(r + boost*1.45));
+              d[i+1]=Math.min(220, Math.round(g + boost*1.05));
+              d[i+2]=Math.min(120, Math.round(b + boost*0.45));
             }
           }
         }
