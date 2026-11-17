@@ -340,27 +340,29 @@ async function generateLargeLabelPDF(listings, dealer, singleListing = null) {
   doc.save(filename);
 }
 
-// ─── A5 LANDSCAPE SHOWROOM DISPLAY CARD — 210×148mm (1-up) ──────────────────
-// NATIVE A5 LANDSCAPE — Left: oversized QR code · Right: Dealer logo, banner & vehicle plaque
-async function generateA5LandscapePDF(listings, dealer, singleListing = null) {
+// ─── A5 PORTRAIT SHOWROOM DISPLAY CARD — 148×210mm (1-up) ───────────────────
+// NATIVE A5 PORTRAIT — Top: oversized QR code · Bottom: Dealer logo, banner & vehicle plaque
+async function generateA5PortraitPDF(listings, dealer, singleListing = null) {
   await loadJsPDF(); await loadQRCode();
   const {jsPDF}=window.jspdf;
   const brandHex=dealer.brand_colour||'#1D6B4A';
   const C=getLabelColours(brandHex);
 
-  const PAGE_W=210, PAGE_H=148;
+  const PAGE_W=148, PAGE_H=210;
+  const CX=PAGE_W/2;
   const STRIPE_H=5.5;
-  const OUTER_PAD=11;
+  const SIDE_PAD=14;
+  const CONTENT_W=PAGE_W-SIDE_PAD*2; // 120mm
 
   const linqrLogoUrl=await getImageDataURL('/LINQR-logo.png');
   const dealerLogoMeta=dealer.logo_url?await getImageMeta(dealer.logo_url):null;
   const publishedListings=singleListing?[singleListing]:listings.filter(l=>l.published);
 
-  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a5'});
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a5'});
 
   for(let i=0;i<publishedListings.length;i++){
     const listing=publishedListings[i];
-    if(i>0)doc.addPage('a5','landscape');
+    if(i>0)doc.addPage('a5','portrait');
 
     // Clean gallery white background
     doc.setFillColor(...C.white);
@@ -371,14 +373,10 @@ async function generateA5LandscapePDF(listings, dealer, singleListing = null) {
     doc.rect(0,0,PAGE_W,STRIPE_H,'F');
     doc.rect(0,PAGE_H-STRIPE_H,PAGE_W,STRIPE_H,'F');
 
-    // Content vertical bounds
-    const contentTop=STRIPE_H+OUTER_PAD;
-    const contentH=PAGE_H-(STRIPE_H+OUTER_PAD)*2; // 115mm
-
-    // ── Left Zone: Oversized QR Code (102×102mm) ────────────────────────────
-    const QR_SIZE=102;
-    const QR_X=OUTER_PAD;
-    const QR_Y=contentTop+(contentH-QR_SIZE)/2;
+    // ── Top Zone: Centered Oversized QR Code (92×92mm) ──────────────────────
+    const QR_SIZE=92;
+    const QR_X=CX-QR_SIZE/2;
+    const QR_Y=STRIPE_H+10;
 
     // Subtle luxury border frame around QR
     doc.setDrawColor(232,232,232);
@@ -407,16 +405,13 @@ async function generateA5LandscapePDF(listings, dealer, singleListing = null) {
       }
     } catch(e){}
 
-    // ── Right Zone: Dealer Logo, Scan Banner & Vehicle Plaque ───────────────
-    const RIGHT_X=QR_X+QR_SIZE+11;
-    const RIGHT_W=PAGE_W-RIGHT_X-OUTER_PAD; // ~76mm
-    const RIGHT_CX=RIGHT_X+RIGHT_W/2;
+    // ── Bottom Zone: Dealer Logo, Scan Banner & Vehicle Plaque ──────────────
+    let cursorY=QR_Y+QR_SIZE+9;
 
     // 1. Dealer logo (true aspect ratio, centered on clean white)
-    let cursorY=contentTop+2;
     if(dealerLogoMeta && dealerLogoMeta.dataUrl){
-      const maxLogoW=RIGHT_W*0.92;
-      const maxLogoH=24;
+      const maxLogoW=CONTENT_W*0.72;
+      const maxLogoH=20;
       const aspect=dealerLogoMeta.width/dealerLogoMeta.height;
       let drawW=maxLogoW;
       let drawH=drawW/aspect;
@@ -425,41 +420,42 @@ async function generateA5LandscapePDF(listings, dealer, singleListing = null) {
         drawW=drawH*aspect;
       }
       try{
-        doc.addImage(dealerLogoMeta.dataUrl,'PNG',RIGHT_CX-drawW/2,cursorY,drawW,drawH,undefined,'FAST');
-        cursorY+=drawH+7;
+        doc.addImage(dealerLogoMeta.dataUrl,'PNG',CX-drawW/2,cursorY,drawW,drawH,undefined,'FAST');
+        cursorY+=drawH+5;
       } catch(e){
         doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(...C.dkgrey);
-        doc.text(doc.splitTextToSize(dealer.name||'',RIGHT_W),RIGHT_CX,cursorY+10,{align:'center'});
-        cursorY+=24;
+        doc.text(doc.splitTextToSize(dealer.name||'',CONTENT_W),CX,cursorY+8,{align:'center'});
+        cursorY+=20;
       }
     } else {
       doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(...C.dkgrey);
-      doc.text(doc.splitTextToSize(dealer.name||'',RIGHT_W),RIGHT_CX,cursorY+10,{align:'center'});
-      cursorY+=24;
+      doc.text(doc.splitTextToSize(dealer.name||'',CONTENT_W),CX,cursorY+8,{align:'center'});
+      cursorY+=20;
     }
 
     // 2. Sleek dark gallery banner
-    const BANNER_H=11.5;
+    const BANNER_W=CONTENT_W*0.86;
+    const BANNER_H=10.5;
     doc.setFillColor(20,20,20);
-    doc.roundedRect(RIGHT_X,cursorY,RIGHT_W,BANNER_H,1.8,1.8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...C.white);
-    doc.text('SCAN ME  ·  SAVE ME  ·  SHARE ME',RIGHT_CX,cursorY+BANNER_H/2,{align:'center',baseline:'middle'});
-    cursorY+=BANNER_H+9;
+    doc.roundedRect(CX-BANNER_W/2,cursorY,BANNER_W,BANNER_H,1.8,1.8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...C.white);
+    doc.text('SCAN ME  ·  SAVE ME  ·  SHARE ME',CX,cursorY+BANNER_H/2,{align:'center',baseline:'middle'});
+    cursorY+=BANNER_H+8;
 
     // 3. Vehicle / Property title
     const vehicleName=listing.listing_type==='property'
       ?(listing.address||'')
       :`${listing.year||''} ${listing.make||''} ${listing.model||''}`.trim();
     doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(...C.dkgrey);
-    const titleLines=doc.splitTextToSize(vehicleName,RIGHT_W);
-    doc.text(titleLines,RIGHT_CX,cursorY,{align:'center'});
-    cursorY+=titleLines.length*6.8+2;
+    const titleLines=doc.splitTextToSize(vehicleName,CONTENT_W);
+    doc.text(titleLines,CX,cursorY,{align:'center'});
+    cursorY+=titleLines.length*6.5+2;
 
     // 4. Price (highlighted in brand colour if set)
     if(listing.price){
       doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...C.vehicleText);
-      doc.text(listing.price,RIGHT_CX,cursorY,{align:'center'});
-      cursorY+=7.5;
+      doc.text(listing.price,CX,cursorY,{align:'center'});
+      cursorY+=7;
     }
 
     // 5. Key specs summary line (engine · odometer · colour)
@@ -468,24 +464,23 @@ async function generateA5LandscapePDF(listings, dealer, singleListing = null) {
       :[listing.engine,listing.odometer,listing.colour].filter(Boolean).join(' · ');
     if(specLine){
       doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...C.grey);
-      const specLines=doc.splitTextToSize(specLine,RIGHT_W);
-      doc.text(specLines,RIGHT_CX,cursorY,{align:'center'});
-      cursorY+=specLines.length*4.5+3;
+      const specLines=doc.splitTextToSize(specLine,CONTENT_W);
+      doc.text(specLines,CX,cursorY,{align:'center'});
     }
 
-    // 6. Divider rule + Stock # + LINQR footer pinned cleanly near bottom
-    const footerBottom=contentTop+contentH;
+    // 6. Divider rule + Stock # + LINQR footer pinned cleanly near bottom stripe
+    const footerBottom=PAGE_H-STRIPE_H-5;
     doc.setDrawColor(230,230,230);doc.setLineWidth(0.3);
-    doc.line(RIGHT_X+6,footerBottom-13,RIGHT_X+RIGHT_W-6,footerBottom-13);
+    doc.line(SIDE_PAD+14,footerBottom-11,PAGE_W-SIDE_PAD-14,footerBottom-11);
 
     const stockLine=listing.listing_type==='property'
       ?`ID: ${listing.property_id||''}`
       :`Stock #${listing.stock_number||''}`;
     doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...C.dkgrey);
-    doc.text(stockLine,RIGHT_CX,footerBottom-7.5,{align:'center'});
+    doc.text(stockLine,CX,footerBottom-6.5,{align:'center'});
 
     doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...C.lgrey);
-    doc.text(`linqr.global/${listing.slug}  ·  Powered by LINQR™`,RIGHT_CX,footerBottom-2,{align:'center'});
+    doc.text(`linqr.global/${listing.slug}  ·  Powered by LINQR™`,CX,footerBottom-1.5,{align:'center'});
   }
 
   const filename=singleListing
@@ -567,7 +562,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
     const published=listings.filter(l=>l.published);
     if(published.length===0){alert("No live listings to print display cards for.");return;}
     setGeneratingA5Labels(true);
-    try{await generateA5LandscapePDF(listings,dealer);}
+    try{await generateA5PortraitPDF(listings,dealer);}
     catch(e){console.error(e);alert("A5 display card generation failed: "+e.message);}
     finally{setGeneratingA5Labels(false);}
   }
@@ -588,7 +583,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
 
   async function handlePrintSingleA5Label(listing) {
     setGeneratingA5Labels(true);
-    try{await generateA5LandscapePDF(listings,dealer,listing);}
+    try{await generateA5PortraitPDF(listings,dealer,listing);}
     catch(e){console.error(e);alert("A5 display card generation failed: "+e.message);}
     finally{setGeneratingA5Labels(false);}
   }
@@ -770,7 +765,7 @@ export default function PortalDashboard({ dealer, onLogout, onAddNew, onAddPrope
               <button onClick={handlePrintA5Labels} disabled={anyPrinting} style={{background:generatingA5Labels?'#9ca3af':brandColour,color:btnTextColour,border:'none',borderRadius:6,padding:'9px 16px',fontSize:13,fontWeight:700,cursor:anyPrinting?'not-allowed':'pointer',fontFamily:'Georgia, serif',width:'100%',marginBottom:6}}>
                 {generatingA5Labels?'Generating A5 PDF...':'🖼️ Print All — A5 Display (1-up)'}
               </button>
-              <p style={{fontSize:11,color:"#9ca3af",margin:"0 0 10px",fontFamily:"Georgia, serif"}}>A5 Landscape · 210×148mm · {liveCount} sheet{liveCount!==1?'s':''}</p>
+              <p style={{fontSize:11,color:"#9ca3af",margin:"0 0 10px",fontFamily:"Georgia, serif"}}>A5 Portrait · 148×210mm · {liveCount} sheet{liveCount!==1?'s':''}</p>
 
               <button onClick={handlePrintLabels} disabled={anyPrinting} style={{background:generatingLabels?'#9ca3af':'#111',color:'#fff',border:'none',borderRadius:6,padding:'8px 16px',fontSize:13,fontWeight:700,cursor:anyPrinting?'not-allowed':'pointer',fontFamily:'Georgia, serif',width:'100%',marginBottom:6}}>
                 {generatingLabels?'Generating PDF...':'🖨️ Print All — Standard (8-up)'}
