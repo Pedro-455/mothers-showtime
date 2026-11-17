@@ -99,13 +99,13 @@ async function loadQRCode() {
     s.onload=resolve;s.onerror=reject;document.head.appendChild(s);
   });
 }
-async function getQRDataURL(url, C, size = 256) {
-  const qrColour=`rgb(${C.qrDark[0]},${C.qrDark[1]},${C.qrDark[2]})`;
+async function getQRDataURL(url, C, size = 256, overrideDark = null, overrideLight = '#ffffff') {
+  const qrColour=overrideDark || `rgb(${C.qrDark[0]},${C.qrDark[1]},${C.qrDark[2]})`;
   return new Promise(resolve=>{
     const div=document.createElement('div');
     div.style.cssText='position:absolute;left:-9999px;top:-9999px;';
     document.body.appendChild(div);
-    new window.QRCode(div,{text:url,width:size,height:size,colorDark:qrColour,colorLight:'#ffffff',correctLevel:window.QRCode.CorrectLevel.H});
+    new window.QRCode(div,{text:url,width:size,height:size,colorDark:qrColour,colorLight:overrideLight,correctLevel:window.QRCode.CorrectLevel.H});
     setTimeout(()=>{
       const el=div.querySelector('canvas')||div.querySelector('img');
       const dataUrl=el?(el.tagName==='CANVAS'?el.toDataURL('image/png'):el.src):'';
@@ -121,12 +121,31 @@ async function getImageDataURL(src) {
     img.src=src;
   });
 }
-async function getImageMeta(src) {
+// Lifts near-black pixels (e.g. "SUNDAY" text) to crisp warm white on dark gallery cards while keeping coloured script intact
+async function getDarkBgLogoMeta(src) {
   return new Promise(resolve=>{
     const img=new Image();img.crossOrigin='anonymous';
     img.onload=()=>{
       const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
-      c.getContext('2d').drawImage(img,0,0);
+      const ctx=c.getContext('2d');
+      ctx.drawImage(img,0,0);
+      try {
+        const imgData=ctx.getImageData(0,0,c.width,c.height);
+        const d=imgData.data;
+        for(let i=0;i<d.length;i+=4){
+          const a=d[i+3];
+          if(a>20){
+            const r=d[i],g=d[i+1],b=d[i+2];
+            const lum=(r*299+g*587+b*114)/1000;
+            const spread=Math.max(r,g,b)-Math.min(r,g,b);
+            // Neutral dark charcoal/black pixels become warm ivory-white; coloured pixels (orange/gold) stay untouched
+            if(lum<75 && spread<28){
+              d[i]=245; d[i+1]=244; d[i+2]=238;
+            }
+          }
+        }
+        ctx.putImageData(imgData,0,0);
+      } catch(e){}
       resolve({dataUrl:c.toDataURL('image/png'),width:img.width,height:img.height});
     };
     img.onerror=()=>resolve(null);
@@ -340,12 +359,13 @@ async function generateLargeLabelPDF(listings, dealer, singleListing = null) {
   doc.save(filename);
 }
 
-// ─── A5 PORTRAIT SHOWROOM DISPLAY CARD — 148×210mm (1-up) ───────────────────
-// NATIVE A5 PORTRAIT — Top: oversized QR code · Bottom: Dealer logo, banner & vehicle plaque
+// ─── A5 PORTRAIT DARK GALLERY DISPLAY CARD — 148×210mm (1-up) ──────────────
+// Luxury dark gallery plaque: Charcoal canvas, double gold-framed high-contrast QR,
+// auto-lifted dealer logo, metallic gold scan banner & crisp white/orange typography
 async function generateA5PortraitPDF(listings, dealer, singleListing = null) {
   await loadJsPDF(); await loadQRCode();
   const {jsPDF}=window.jspdf;
-  const brandHex=dealer.brand_colour||'#1D6B4A';
+  const brandHex=dealer.brand_colour||'#E85D1A';
   const C=getLabelColours(brandHex);
 
   const PAGE_W=148, PAGE_H=210;
@@ -354,8 +374,19 @@ async function generateA5PortraitPDF(listings, dealer, singleListing = null) {
   const SIDE_PAD=14;
   const CONTENT_W=PAGE_W-SIDE_PAD*2; // 120mm
 
+  // Luxury Gallery Palette
+  const BG_CHARCOAL=[20,20,20];
+  const QR_IVORY=[250,249,246];
+  const QR_DARK_HEX='#111111';
+  const QR_LIGHT_HEX='#FAF9F6';
+  const GOLD_BRIGHT=[208,168,108];
+  const GOLD_DEEP=[152,118,68];
+  const PILL_DARK=[11,11,11];
+  const SILVER_TEXT=[185,185,185];
+  const MUTED_TEXT=[130,130,130];
+
   const linqrLogoUrl=await getImageDataURL('/LINQR-logo.png');
-  const dealerLogoMeta=dealer.logo_url?await getImageMeta(dealer.logo_url):null;
+  const dealerLogoMeta=dealer.logo_url?await getDarkBgLogoMeta(dealer.logo_url):null;
   const publishedListings=singleListing?[singleListing]:listings.filter(l=>l.published);
 
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a5'});
@@ -364,37 +395,50 @@ async function generateA5PortraitPDF(listings, dealer, singleListing = null) {
     const listing=publishedListings[i];
     if(i>0)doc.addPage('a5','portrait');
 
-    // Clean gallery white background
-    doc.setFillColor(...C.white);
+    // 1. Rich charcoal-black gallery canvas
+    doc.setFillColor(...BG_CHARCOAL);
     doc.rect(0,0,PAGE_W,PAGE_H,'F');
+
+    // Subtle inner hairline frame
+    doc.setDrawColor(42,42,42);
+    doc.setLineWidth(0.3);
+    doc.rect(4,STRIPE_H+3,PAGE_W-8,PAGE_H-(STRIPE_H+3)*2,'S');
 
     // Top & bottom full-bleed brand accent stripes
     doc.setFillColor(...C.stripe);
     doc.rect(0,0,PAGE_W,STRIPE_H,'F');
     doc.rect(0,PAGE_H-STRIPE_H,PAGE_W,STRIPE_H,'F');
 
-    // ── Top Zone: Centered Oversized QR Code (92×92mm) ──────────────────────
-    const QR_SIZE=92;
+    // ── Top Zone: Double Gold-Framed High-Contrast QR Code ──────────────────
+    const QR_SIZE=88;
     const QR_X=CX-QR_SIZE/2;
-    const QR_Y=STRIPE_H+10;
+    const QR_Y=STRIPE_H+11;
 
-    // Subtle luxury border frame around QR
-    doc.setDrawColor(232,232,232);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(QR_X-3,QR_Y-3,QR_SIZE+6,QR_SIZE+6,3,3,'S');
+    // Warm ivory backing plate for instant phone camera lock-on
+    doc.setFillColor(...QR_IVORY);
+    doc.roundedRect(QR_X-3.5,QR_Y-3.5,QR_SIZE+7,QR_SIZE+7,2.8,2.8,'F');
 
-    const qrDataUrl=await getQRDataURL(`https://linqr.global/${listing.slug}`,C,512);
+    // Outer & inner metallic gold-bronze borders
+    doc.setDrawColor(...GOLD_DEEP);
+    doc.setLineWidth(0.7);
+    doc.roundedRect(QR_X-5.2,QR_Y-5.2,QR_SIZE+10.4,QR_SIZE+10.4,3.8,3.8,'S');
+
+    doc.setDrawColor(...GOLD_BRIGHT);
+    doc.setLineWidth(0.35);
+    doc.roundedRect(QR_X-3.8,QR_Y-3.8,QR_SIZE+7.6,QR_SIZE+7.6,3.0,3.0,'S');
+
+    const qrDataUrl=await getQRDataURL(`https://linqr.global/${listing.slug}`,C,512,QR_DARK_HEX,QR_LIGHT_HEX);
     if(qrDataUrl)doc.addImage(qrDataUrl,'PNG',QR_X,QR_Y,QR_SIZE,QR_SIZE);
 
     // Centered LINQR green badge on QR
     try {
       const badgeW=QR_SIZE*0.36, badgeH=QR_SIZE*0.115;
       const badgeX=QR_X+(QR_SIZE-badgeW)/2, badgeY=QR_Y+(QR_SIZE-badgeH)/2;
-      doc.setFillColor(...C.qrDark);
-      doc.roundedRect(badgeX-1.8,badgeY-1.8,badgeW+3.6,badgeH+3.6,2.2,2.2,'F');
+      doc.setFillColor(17,17,17);
+      doc.roundedRect(badgeX-1.6,badgeY-1.6,badgeW+3.2,badgeH+3.2,2.2,2.2,'F');
       doc.setFillColor(...C.badge);
       doc.roundedRect(badgeX,badgeY,badgeW,badgeH,1.8,1.8,'F');
-      doc.setDrawColor(...C.white);doc.setLineWidth(0.45);
+      doc.setDrawColor(...GOLD_BRIGHT);doc.setLineWidth(0.4);
       doc.roundedRect(badgeX,badgeY,badgeW,badgeH,1.8,1.8,'S');
       if(linqrLogoUrl){
         const logoW=badgeW*0.75, logoH=badgeH*0.65;
@@ -405,12 +449,12 @@ async function generateA5PortraitPDF(listings, dealer, singleListing = null) {
       }
     } catch(e){}
 
-    // ── Bottom Zone: Dealer Logo, Scan Banner & Vehicle Plaque ──────────────
-    let cursorY=QR_Y+QR_SIZE+9;
+    // ── Bottom Zone: Dealer Logo, Gold Scan Banner & Vehicle Plaque ─────────
+    let cursorY=QR_Y+QR_SIZE+10.5;
 
-    // 1. Dealer logo (true aspect ratio, centered on clean white)
+    // 1. Dealer logo (lifted for dark background, true aspect ratio)
     if(dealerLogoMeta && dealerLogoMeta.dataUrl){
-      const maxLogoW=CONTENT_W*0.72;
+      const maxLogoW=CONTENT_W*0.74;
       const maxLogoH=20;
       const aspect=dealerLogoMeta.width/dealerLogoMeta.height;
       let drawW=maxLogoW;
@@ -421,65 +465,68 @@ async function generateA5PortraitPDF(listings, dealer, singleListing = null) {
       }
       try{
         doc.addImage(dealerLogoMeta.dataUrl,'PNG',CX-drawW/2,cursorY,drawW,drawH,undefined,'FAST');
-        cursorY+=drawH+5;
+        cursorY+=drawH+5.5;
       } catch(e){
-        doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(...C.dkgrey);
+        doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(...C.white);
         doc.text(doc.splitTextToSize(dealer.name||'',CONTENT_W),CX,cursorY+8,{align:'center'});
         cursorY+=20;
       }
     } else {
-      doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(...C.dkgrey);
+      doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(...C.white);
       doc.text(doc.splitTextToSize(dealer.name||'',CONTENT_W),CX,cursorY+8,{align:'center'});
       cursorY+=20;
     }
 
-    // 2. Sleek dark gallery banner
-    const BANNER_W=CONTENT_W*0.86;
-    const BANNER_H=10.5;
-    doc.setFillColor(20,20,20);
-    doc.roundedRect(CX-BANNER_W/2,cursorY,BANNER_W,BANNER_H,1.8,1.8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...C.white);
+    // 2. Dark pill banner with metallic gold border & champagne-gold text
+    const BANNER_W=CONTENT_W*0.88;
+    const BANNER_H=10;
+    doc.setFillColor(...PILL_DARK);
+    doc.setDrawColor(...GOLD_DEEP);
+    doc.setLineWidth(0.35);
+    doc.roundedRect(CX-BANNER_W/2,cursorY,BANNER_W,BANNER_H,1.8,1.8,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...GOLD_BRIGHT);
     doc.text('SCAN ME  ·  SAVE ME  ·  SHARE ME',CX,cursorY+BANNER_H/2,{align:'center',baseline:'middle'});
     cursorY+=BANNER_H+8;
 
-    // 3. Vehicle / Property title
+    // 3. Vehicle / Property title in crisp white
     const vehicleName=listing.listing_type==='property'
       ?(listing.address||'')
       :`${listing.year||''} ${listing.make||''} ${listing.model||''}`.trim();
-    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(...C.dkgrey);
+    doc.setFont('helvetica','bold');doc.setFontSize(15.5);doc.setTextColor(...C.white);
     const titleLines=doc.splitTextToSize(vehicleName,CONTENT_W);
     doc.text(titleLines,CX,cursorY,{align:'center'});
-    cursorY+=titleLines.length*6.5+2;
+    cursorY+=titleLines.length*6.3+2;
 
-    // 4. Price (highlighted in brand colour if set)
+    // 4. Price highlighted in brand colour (falls back to gold if brand is too dark)
     if(listing.price){
-      doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...C.vehicleText);
+      const priceRgb=brightness(brandHex)<70 ? GOLD_BRIGHT : C.stripe;
+      doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...priceRgb);
       doc.text(listing.price,CX,cursorY,{align:'center'});
       cursorY+=7;
     }
 
-    // 5. Key specs summary line (engine · odometer · colour)
+    // 5. Key specs summary line in clean silver
     const specLine=listing.listing_type==='property'
       ?[listing.suburb,listing.sale_method].filter(Boolean).join(' · ')
       :[listing.engine,listing.odometer,listing.colour].filter(Boolean).join(' · ');
     if(specLine){
-      doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...C.grey);
+      doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...SILVER_TEXT);
       const specLines=doc.splitTextToSize(specLine,CONTENT_W);
       doc.text(specLines,CX,cursorY,{align:'center'});
     }
 
-    // 6. Divider rule + Stock # + LINQR footer pinned cleanly near bottom stripe
+    // 6. Subtle divider rule + Stock # + LINQR footer pinned cleanly near bottom stripe
     const footerBottom=PAGE_H-STRIPE_H-5;
-    doc.setDrawColor(230,230,230);doc.setLineWidth(0.3);
-    doc.line(SIDE_PAD+14,footerBottom-11,PAGE_W-SIDE_PAD-14,footerBottom-11);
+    doc.setDrawColor(55,55,55);doc.setLineWidth(0.3);
+    doc.line(SIDE_PAD+16,footerBottom-11,PAGE_W-SIDE_PAD-16,footerBottom-11);
 
     const stockLine=listing.listing_type==='property'
       ?`ID: ${listing.property_id||''}`
       :`Stock #${listing.stock_number||''}`;
-    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...C.dkgrey);
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...C.white);
     doc.text(stockLine,CX,footerBottom-6.5,{align:'center'});
 
-    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...C.lgrey);
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...MUTED_TEXT);
     doc.text(`linqr.global/${listing.slug}  ·  Powered by LINQR™`,CX,footerBottom-1.5,{align:'center'});
   }
 
